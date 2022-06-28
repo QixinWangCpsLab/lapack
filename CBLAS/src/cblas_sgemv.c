@@ -8,6 +8,17 @@
  */
 #include "cblas.h"
 #include "cblas_f77.h"
+
+void soccs_sce_sgemv(&TA, &M, &N, &alpha, A, &lda, X, &incX,
+                &beta, Y, &incY){
+   //SoCCS SCE client thread code
+   //copy data to a req packet in the shared memory circular queue
+   //send req packet to server stack server thread
+   //block to wait for reply
+   //got reply, copy data from shared memory circular queue reply packet to return buffer
+   //return
+}
+
 void cblas_sgemv(const CBLAS_LAYOUT layout,
                  const CBLAS_TRANSPOSE TransA, const CBLAS_INT M, const CBLAS_INT N,
                  const float alpha, const float  *A, const CBLAS_INT lda,
@@ -15,20 +26,6 @@ void cblas_sgemv(const CBLAS_LAYOUT layout,
                  float  *Y, const CBLAS_INT incY)
 {
    char TA;
-#ifdef F77_CHAR
-   F77_CHAR F77_TA;
-#else
-   #define F77_TA &TA
-#endif
-#ifdef F77_INT
-   F77_INT F77_M=M, F77_N=N, F77_lda=lda, F77_incX=incX, F77_incY=incY;
-#else
-   #define F77_M M
-   #define F77_N N
-   #define F77_lda lda
-   #define F77_incX incX
-   #define F77_incY incY
-#endif
 
    extern int CBLAS_CallFromC;
    extern int RowMajorStrg;
@@ -46,11 +43,8 @@ void cblas_sgemv(const CBLAS_LAYOUT layout,
          CBLAS_CallFromC = 0;
          RowMajorStrg = 0;
       }
-      #ifdef F77_CHAR
-         F77_TA = C2F_CHAR(&TA);
-      #endif
-      F77_sgemv(F77_TA, &F77_M, &F77_N, &alpha, A, &F77_lda, X, &F77_incX,
-                &beta, Y, &F77_incY);
+      soccs_sce_sgemv(&TA, &M, &N, &alpha, A, &lda, X, &incX,
+                &beta, Y, &incY);
    }
    else if (layout == CblasRowMajor)
    {
@@ -65,14 +59,12 @@ void cblas_sgemv(const CBLAS_LAYOUT layout,
          RowMajorStrg = 0;
          return;
       }
-      #ifdef F77_CHAR
-         F77_TA = C2F_CHAR(&TA);
-      #endif
-      F77_sgemv(F77_TA, &F77_N, &F77_M, &alpha, A, &F77_lda, X,
-                &F77_incX, &beta, Y, &F77_incY);
+      soccs_sce_sgemv(&TA, &M, &N, &alpha, A, &lda, X, &incX,
+                &beta, Y, &incY);
    }
    else cblas_xerbla(1, "cblas_sgemv", "Illegal layout setting, %d\n", layout);
    CBLAS_CallFromC = 0;
    RowMajorStrg = 0;
    return;
 }
+
