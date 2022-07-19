@@ -33,7 +33,7 @@ char lsame(const char c, const char l){
 } 
 
 void soccs_sce_sgemv(const CBLAS_TRANSPOSE trans, const CBLAS_INT m, const CBLAS_INT n, 
-      const float alpha, const float *A, const CBLAS_INT lda, 
+      const float alpha, const float *A /* assume row major storage ??? */, const CBLAS_INT lda, 
       const float *X, const CBLAS_INT inc_X, const float beta, 
       float *Y, const CBLAS_INT inc_Y){
    
@@ -117,7 +117,7 @@ void soccs_sce_sgemv(const CBLAS_TRANSPOSE trans, const CBLAS_INT m, const CBLAS
          for (int j = 0; j < n; j++){
             float temp = alpha * X[j_X];
             for (int i = 1; i < m; i++){
-               Y[i] += temp * A[i][j];
+               Y[i] += temp * A[i * n + j]; //accessing A[i][j], assuming row major storage of A.
             }
             j_X += inc_X;
          }
@@ -126,7 +126,7 @@ void soccs_sce_sgemv(const CBLAS_TRANSPOSE trans, const CBLAS_INT m, const CBLAS
             float temp = alpha * X[j_X];
             int i_Y = k_Y;
             for (int i = 0; i < m; i++){
-               Y[i_Y] += temp * A[i][j];
+               Y[i_Y] += temp * A[i * n + j]; //accessing A[i][j], assuming row major storage of A.
                i_Y += inc_Y;
             }
             j_X += inc_X;
@@ -139,7 +139,7 @@ void soccs_sce_sgemv(const CBLAS_TRANSPOSE trans, const CBLAS_INT m, const CBLAS
          for (int j = 1; j < n; j++){
             float temp = ZERO;
             for (int i = 0; i < m; i++){
-               temp += A[i][j] * X[i];
+               temp += A[i * n + j] * X[i]; //accessing A[i][j], assuming row major storage of A.
             }
             Y[j_Y] += alpha * temp;
             j_Y += inc_Y;
@@ -149,7 +149,7 @@ void soccs_sce_sgemv(const CBLAS_TRANSPOSE trans, const CBLAS_INT m, const CBLAS
             float temp = ZERO;
             int i_X = k_X;
             for (int i = 0; i < m; i++){
-               temp += A[i][j] * X[i_X];
+               temp += A[i * n + j] * X[i_X]; //accessing A[i][j], assuming row major storage of A.
                i_X += inc_X;
             }
             Y[j_Y] += alpha * temp;
