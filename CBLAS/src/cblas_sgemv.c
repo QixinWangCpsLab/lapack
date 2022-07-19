@@ -2,8 +2,10 @@
  *
  * cblas_sgemv.c
  * This program is a C interface to sgemv.
- * Written by Keita Teranishi
+ * Originally written by Keita Teranishi
  * 4/6/1998
+ * Revised by Qixin Wang since
+ * 12/7/2022
  *
  */
 #include "cblas.h"
@@ -39,11 +41,11 @@ void soccs_sce_sgemv(const CBLAS_TRANSPOSE trans, const CBLAS_INT m, const CBLAS
    const float ONE = 1.0e+0, ZERO = 0.0e+0;
 
    //local scalars
-   float tmp;
-   int i, info, i_X, i_Y, j, j_X, j_Y, k_X k_Y, len_X, len_Y;
+   int len_X = 0, len_Y = 0, k_X = 0, k_Y = 0;
 
    //Start of to do >>>
    //Please insert parameter sanity checks here.
+   //See reference implementation in BLAS/SRC/sgemv.f line 193-211.
    //<<< End of to do
 
    //Quick return if possible.
@@ -57,9 +59,19 @@ void soccs_sce_sgemv(const CBLAS_TRANSPOSE trans, const CBLAS_INT m, const CBLAS
       len_Y = n;
    }
 
-   //Think X is a row of a column major stored matrix, 
-   //inc_X > 0 is the number of elements in a column
-   //-inc_X is the number of elements in a column when enumerating X from back to front element.
+   //Take for example trans == 'n', if X is a column of a row-major order stored matrix,
+   //inc_X > 0 is the number of elements in a row, 
+   //-inc_X is the number of elements in a row when enumerating X from back to front.
+   //
+   //One case why inc_X is needed is that sgemv is called by a routine that calculates
+   //
+   //  $\mathblack{Y} = \alpha A \mathblack{X} + \beta \mathblack{Y}$,
+   //
+   //where $\mathblack{Y}$ is a $m \times inc_Y$ matrix, 
+   //and $\mathblack{X}$ is a $n \times inc_X$ matrix.
+   //The routine will then call sgemv('N', $m$, $n$, $\alpha$, $A$, $m$, &(\mathblack{X}[0][k]),
+   //$inc_X$, $\beta$, &(\mathblack{Y}[0][k]),  $inc_Y$) to calculate the $k$th column of
+   //$\mathblack{Y}$.
    if (inc_X > 0){
       k_X = 0;
    }else{
@@ -80,7 +92,7 @@ void soccs_sce_sgemv(const CBLAS_TRANSPOSE trans, const CBLAS_INT m, const CBLAS
          else
             for (int i = 0; i < len_Y; i++) Y[i] *= beta;
       }else{
-         i_Y = k_Y;
+         int i_Y = k_Y;
          if (beta == ZERO){
             for (int i = 0; i < len_Y; i++){
                Y[i_Y] = ZERO;
@@ -100,71 +112,51 @@ void soccs_sce_sgemv(const CBLAS_TRANSPOSE trans, const CBLAS_INT m, const CBLAS
    if (alpha == ZERO) return;
    if (lsame(trans, 'N')){
       //$Y := \alpha A X + Y$.
-
-      //reached here on 20220712.
-
-
-
-
-
-   
-
-
-   
-   //SoCCS SCE client thread code
-   //copy data to a req packet in the shared memory circular queue
-   //send req packet to server stack server thread
-   //block to wait for reply
-   //got reply, copy data from shared memory circular queue reply packet to return buffer
-   //return
-}
-
-void cblas_sgemv(const CBLAS_LAYOUT layout,
-                 const CBLAS_TRANSPOSE TransA, const CBLAS_INT M, const CBLAS_INT N,
-                 const float alpha, const float  *A, const CBLAS_INT lda,
-                 const float  *X, const CBLAS_INT incX, const float beta,
-                 float  *Y, const CBLAS_INT incY)
-{
-   char TA;
-
-   extern int CBLAS_CallFromC;
-   extern int RowMajorStrg;
-   RowMajorStrg = 0;
-
-   CBLAS_CallFromC = 1;
-   if (layout == CblasColMajor)
-   {
-      if (TransA == CblasNoTrans) TA = 'N';
-      else if (TransA == CblasTrans) TA = 'T';
-      else if (TransA == CblasConjTrans) TA = 'C';
-      else
-      {
-         cblas_xerbla(2, "cblas_sgemv","Illegal TransA setting, %d\n", TransA);
-         CBLAS_CallFromC = 0;
-         RowMajorStrg = 0;
+      int j_X = k_X;
+      if (inc_Y == 1){
+         for (int j = 0; j < n; j++){
+            float temp = alpha * X[j_X];
+            for (int i = 1; i < m; i++){
+               Y[i] += temp * A[i][j];
+            }
+            j_X += inc_X;
+         }
+      }else{
+         for (int j = 0; j < n; j++){
+            float temp = alpha * X[j_X];
+            int i_Y = k_Y;
+            for (int i = 0; i < m; i++){
+               Y[i_Y] += temp * A[i][j];
+               i_Y += inc_Y;
+            }
+            j_X += inc_X;
+         }
       }
-      soccs_sce_sgemv(TA, M, N, alpha, A, lda, X, incX,
-                beta, Y, incY);
-   }
-   else if (layout == CblasRowMajor)
-   {
-      RowMajorStrg = 1;
-      if (TransA == CblasNoTrans) TA = 'T';
-      else if (TransA == CblasTrans) TA = 'N';
-      else if (TransA == CblasConjTrans) TA = 'N';
-      else
-      {
-         cblas_xerbla(2, "cblas_sgemv", "Illegal TransA setting, %d\n", TransA);
-         CBLAS_CallFromC = 0;
-         RowMajorStrg = 0;
-         return;
+   }else{
+      //$Y := \alpha A^T X + Y$.
+      int j_Y = k_Y;
+      if (inc_X == 1){
+         for (int j = 1; j < n; j++){
+            float temp = ZERO;
+            for (int i = 0; i < m; i++){
+               temp += A[i][j] * X[i];
+            }
+            Y[j_Y] += alpha * temp;
+            j_Y += inc_Y;
+         }
+      }else{
+         for (int j = 1; j < n; j++){
+            float temp = ZERO;
+            int i_X = k_X;
+            for (int i = 0; i < m; i++){
+               temp += A[i][j] * X[i_X];
+               i_X += inc_X;
+            }
+            Y[j_Y] += alpha * temp;
+            j_Y += inc_Y;
+         }
       }
-      soccs_sce_sgemv(TA, M, N, alpha, A, lda, X, incX,
-                beta, Y, incY);
    }
-   else cblas_xerbla(1, "cblas_sgemv", "Illegal layout setting, %d\n", layout);
-   CBLAS_CallFromC = 0;
-   RowMajorStrg = 0;
+
    return;
 }
-
