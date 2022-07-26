@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
 	for(int i = 0; i < N; i++)
 		X[i] = atof(argv[vi++]);
 	for(int i = 0; i < M; i++)
-		X[i] = atof(argv[vi++]);
+		Y[i] = atof(argv[vi++]);
 
 	cblas_sgemv(layout, TransA, M, N, alpha, A, lda, X, incX, beta, Y, incY);
 
