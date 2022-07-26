@@ -1,5 +1,6 @@
 #!/bin/bash
-for ((i=0;i<3;i++));
+#Usage: ./run.sh <M> <N> <total number of test episodes>
+for ((i=0;i<$3;i++));
 	do
 		rm -f test.in
 		./gen $1 $2
@@ -11,5 +12,5 @@ for ((i=0;i<3;i++));
 		cat test2.out
 		echo "---------------------------------------"
 		diff test1.out test2.out
-		sleep 0.001
+		sleep 0.2
 	done

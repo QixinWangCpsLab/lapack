@@ -19,7 +19,7 @@ gen: gen.c
 	gcc $^ -o $@
 
 $(target): main.o
-	gcc $^ -o $@ -L../ -lcblas
+	gcc $^ -o $@ -L./lib/soc -lcblas
 
 origin_$(target): main.o
 	gcc $^ -o $@ -L./lib/origin -lcblas -lrefblas -lgfortran

@@ -5,15 +5,26 @@
 int main(int argc, char *argv[]) {
 	CBLAS_LAYOUT 	layout 	= CblasRowMajor;
 	CBLAS_TRANSPOSE	TransA	= CblasNoTrans;
-	CBLAS_INT		M		= 10;
-	CBLAS_INT		N		= 20;
+	CBLAS_INT		M		= atoi(argv[1]);
+	CBLAS_INT		N		= atoi(argv[2]);
 	float			alpha	= 1.0;
 	float 			*A 		= (float*) malloc (sizeof(float) * M * N);
-	CBLAS_INT 		lda		= M;
-	float			*X		= (float*) malloc (sizeof(float) * N);
+	CBLAS_INT 		lda		= N;
+
+	int len_X = 0, len_Y = 0;
+
+	if (TransA == CblasNoTrans){
+		len_X = N;
+		len_Y = M;
+	}else{
+		len_X = M;
+		len_Y = N;
+	}
+
+	float			*X		= (float*) malloc (sizeof(float) * len_X);
 	CBLAS_INT		incX	= 1;
 	float			beta	= 1.0;
-	float			*Y		= (float*) malloc (sizeof(float) * M);
+	float			*Y		= (float*) malloc (sizeof(float) * len_Y);
 	CBLAS_INT		incY	= 1;
 	/*
 	float Ac[] = {	1.0, 1.0, 1.0,
@@ -27,17 +38,17 @@ int main(int argc, char *argv[]) {
 	float Yc[] = {1.0, 1.0, 1.0, 1.0, 1.0};
 	memcpy(Y, Yc, sizeof(Yc));
 	*/
-	int vi = 1;
+	int vi = 3;
 	for(int i = 0; i < N * M; i++)
 		A[i] = atof(argv[vi++]);
-	for(int i = 0; i < N; i++)
+	for(int i = 0; i < len_X; i++)
 		X[i] = atof(argv[vi++]);
-	for(int i = 0; i < M; i++)
+	for(int i = 0; i < len_Y; i++)
 		Y[i] = atof(argv[vi++]);
 
 	cblas_sgemv(layout, TransA, M, N, alpha, A, lda, X, incX, beta, Y, incY);
 
-	for(int i = 0; i < M; i++)
+	for(int i = 0; i < len_Y; i++)
 		printf("%f\n", Y[i]); 
 	return 0;
 }
