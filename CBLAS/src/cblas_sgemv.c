@@ -53,7 +53,8 @@ void soccs_sce_sgemv(const CBLAS_TRANSPOSE trans, const CBLAS_INT m, const CBLAS
    //Quick return if possible.
    if (m == 0 || n == 0 || ((alpha == ZERO) && (beta == ONE))) return;
 
-   if (lsame(trans, 'N')){
+   //Deprected old usage: if (lsame(trans, 'N')){
+   if (trans == CblasNoTrans){
       len_X = n;
       len_Y = m;
    }else{
@@ -112,7 +113,8 @@ void soccs_sce_sgemv(const CBLAS_TRANSPOSE trans, const CBLAS_INT m, const CBLAS
 
    //Next assign $Y := \alpha A X + Y$ or $Y := \alpha A^T X + Y$.
    if (alpha == ZERO) return;
-   if (lsame(trans, 'N')){
+   //Deprecated old usage: if (lsame(trans, 'N')){
+   if (trans == CblasNoTrans){
       //$Y := \alpha A X + Y$.
       int j_X = k_X;
       if (inc_Y == 1){
@@ -141,7 +143,7 @@ void soccs_sce_sgemv(const CBLAS_TRANSPOSE trans, const CBLAS_INT m, const CBLAS
          for (int j = 0; j < n; j++){
             float temp = ZERO;
             for (int i = 0; i < m; i++){
-               temp += A[i * n + j] * X[i]; //accessing A[i][j], assuming row major storage of A.
+               temp += A[i * n + j] * X[i]; //accessing A^T[j][i], i.e. A[i][j], assuming row major storage of A.
             }
             Y[j_Y] += alpha * temp;
             j_Y += inc_Y;
@@ -151,7 +153,7 @@ void soccs_sce_sgemv(const CBLAS_TRANSPOSE trans, const CBLAS_INT m, const CBLAS
             float temp = ZERO;
             int i_X = k_X;
             for (int i = 0; i < m; i++){
-               temp += A[i * n + j] * X[i_X]; //accessing A[i][j], assuming row major storage of A.
+               temp += A[i * n + j] * X[i_X]; //accessing A^T[j][i], i.e. A[i][j], assuming row major storage of A.
                i_X += inc_X;
             }
             Y[j_Y] += alpha * temp;
