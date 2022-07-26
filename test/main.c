@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 int main(int argc, char *argv[]) {
-	CBLAS_LAYOUT 	layout 	= CblasColMajor;
+	CBLAS_LAYOUT 	layout 	= CblasRowMajor;
 	CBLAS_TRANSPOSE	TransA	= CblasNoTrans;
 	CBLAS_INT		M		= 10;
 	CBLAS_INT		N		= 20;
