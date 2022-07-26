@@ -25,7 +25,7 @@ origin_$(target): main.o
 	gcc $^ -o $@ -L./lib/origin -lcblas -lrefblas -lgfortran
 
 main.o: main.c
-	gcc $^ -c -o $@
+	gcc $^ -I./include -c -o $@ 
 
 .PHONY: clean
 

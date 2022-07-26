@@ -10,6 +10,8 @@
  */
 #include "cblas.h"
 #include "cblas_f77.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 float max(const float a, const float b){
    return ((a) > (b))?(a):(b);
@@ -168,6 +170,10 @@ void cblas_sgemv(const CBLAS_LAYOUT layout,
       			 float *Y, const CBLAS_INT incY){
 	if(layout == CblasRowMajor) 
 		soccs_sce_sgemv(TransA, M, N, alpha, A, lda, X, incX, beta, Y, incY);
-	else
-		soccs_sce_sgemv(TransA, N, M, alpha, A, lda, X, incX, beta, Y, incY);
+	else {
+		//soccs_sce_sgemv(TransA, N, M, alpha, A, lda, X, incX, beta, Y, incY);
+		perror("calling cblas_sgemv with layout == CblaslColMajor.");
+		exit(-1);
+	}
+
 }
