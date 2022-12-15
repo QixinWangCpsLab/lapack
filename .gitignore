@@ -5,7 +5,9 @@
 INSTALL/test*
 
 # local make.inc
-make.inc
+# Qixin Wang 20221215: Commented out make.inc to
+# add make.inc into the traced files.
+#make.inc
 
 # BLAS testing
 BLAS/TESTING/*.out
