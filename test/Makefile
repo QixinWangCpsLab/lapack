@@ -2,7 +2,7 @@ M := 10
 N := 20
 target := a.out
 
-all: subjects data
+all: subjects
 
 test: all
 	@echo "\n SOCCS_SCE_CBLAS: reading data \n"
@@ -19,13 +19,13 @@ gen: gen.c
 	gcc $^ -o $@
 
 $(target): main.o
-	gcc $^ -o $@ -L./lib/soc -lcblas
+	gcc $^ -g -o $@ -L./lib/soc -lcblas
 
 origin_$(target): main.o
-	gcc $^ -o $@ -L./lib/origin -lcblas -lrefblas -lgfortran
+	gcc $^ -g -o $@ -L./lib/origin -lcblas -lrefblas -lgfortran
 
 main.o: main.c
-	gcc $^ -I./include -c -o $@ 
+	gcc $^ -g -I./include -c -o $@ 
 
 .PHONY: clean
 
