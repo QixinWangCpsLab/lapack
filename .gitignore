@@ -44,3 +44,13 @@ build*
 DOCS/man
 DOCS/explore-html
 output_err
+
+*.swp
+*.idea/
+*/cmake-build-debug/
+*/compile_commands.json
+*cmake-build-debug/
+
+test/
+
+

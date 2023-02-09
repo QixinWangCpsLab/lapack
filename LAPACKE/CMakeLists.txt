@@ -88,7 +88,7 @@ if(LAPACKE_WITH_TMG)
 endif()
 list(APPEND SOURCES ${UTILS})
 
-add_library(${LAPACKELIB} ${SOURCES})
+add_library(${LAPACKELIB} ${SOURCES} ../../../../../lapacke_dppsv_work.c ../../../../../lapacke_dppsv_work.c ../../../../../lapacke_cbbcsd.c)
 set_target_properties(
   ${LAPACKELIB} PROPERTIES
   LINKER_LANGUAGE C

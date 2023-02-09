@@ -45,7 +45,7 @@ endif()
 option(TEST_FORTRAN_COMPILER "Test Fortran compiler complex abs and complex division" ON)
 if( TEST_FORTRAN_COMPILER )
 
-  add_executable( test_zcomplexabs ${LAPACK_SOURCE_DIR}/INSTALL/test_zcomplexabs.f )
+  add_executable( test_zcomplexabs ${LAPACK_SOURCE_DIR}/INSTALL/test_zcomplexabs.f ../../../../lapacke_cbbcsd.c)
   add_custom_target( run_test_zcomplexabs
     COMMAND test_zcomplexabs 2> test_zcomplexabs.err
     WORKING_DIRECTORY ${LAPACK_BINARY_DIR}/INSTALL
