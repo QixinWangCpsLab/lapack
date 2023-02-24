@@ -15,7 +15,6 @@
 #include <thread>
 
 #include "lapacke.h"
-#include "/home/parallels/workspace/lapack/CBLAS/include/cblas.h"
 
 #include "soccs_sce_client_server_circular_queue.h"
 #include "soccs_sce_client_server_protocol.h"
