@@ -1,0 +1,8 @@
+# .gitignore #
+
+main
+
+ref_main
+
+*.o
+
