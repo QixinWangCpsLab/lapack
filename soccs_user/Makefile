@@ -1,4 +1,4 @@
-WORKSPACE := /home/parallels/workspace
+WORKSPACE := ../..
 
 CC := g++
 
