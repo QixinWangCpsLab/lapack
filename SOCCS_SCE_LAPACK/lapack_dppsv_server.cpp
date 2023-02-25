@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -146,78 +147,50 @@ ap[i][j] = ap[?]
               goto reply; // no need to calculate
 
             /* calculation starts from here */
-            /* 190: dpptrf( uplo, n, ap) */
-            int j, jc, jj;
-            double ajj;
-            if(uplo == 'U' || uplo == 'u') {
-              /* 177: Compute the Choleskey factorization A = U**T**U */
-              jj = 0;
-              for(j = 1; j <= n; j++) {
-                jc = jj + 1;
-                jj = jj + j - 1;
-                /* 184: Compute elements 0:j-2 of column j */ 
-                if(j > 1) {
-                  // dtpsv('U', 'T', 'N', j - 1, ap, ap + jc - 1, 1);
-                  int kk_2 = 1, k_2, i_2, j_2;
-                  double t_2;
-                  for(j_2 = 1; j_2 <= j - 1; j_2++) {
-                    t_2 = ap[jc + j_2 - 1];
-                    k_2 = kk_2;
-                    for(i_2 = 1; i_2 <= j_2 - 1; i_2++) {
-                      t_2 = t_2 - ap[k_2 - 1] * ap[jc - 1 + i_2 - 1];
-                      k_2 = k_2 + 1;
-                    }
-                    t_2 = t_2 / ap[kk_2 + j_2 - 1];
-                    ap[jc - 1 + j_2 - 1] = t_2;
-                    kk_2 = kk_2 + j_2;
-                  }
-                  // end of dtpsv():286-298-----------------------
+//start            /* 190: dpptrf( uplo, n, ap) */
+            if (uplo == 'L' || uplo == 'l') { 
+            fprintf(stderr, "enter L\n");
+              ap[0] = sqrt(ap[0]);
+              for (int i = 1; i < n; i++)
+                ap[i] = ap[i] / ap[0];
+              double sum = 0;
+              for (int j = 2; j <= n; j++) {
+                sum = 0;
+                for (int k = 1; k < j; k++)
+                  sum += ap[j + (k-1)*(2*n-k)/2 - 1] * ap[j + (k-1)*(n*2-k)/2 - 1];
+                ap[j + (j-1)*(2*n-j)/2 - 1] = sqrt(ap[j + (j-1)*(2*n-j)/2 - 1] - sum);
+                for (int i = j + 1; i <= n; i++) {
+                  sum = 0;
+                  fprintf(stderr, "%d %d\n", i, j);
+                  for (int k = 1; k <= j-1; k++)
+                    sum += ap[i + (k-1)*(2*n-k)/2 - 1] * ap[j + (k-1)*(2*n-k)/2 - 1];
+                  ap[i + (j-1)*(2*n-j)/2 - 1] = (ap[i + (j-1)*(2*n-j)/2 - 1] - sum) / ap[j + (j-1)*(2*n-j)/2 - 1];
                 }
-                // ddot(j - 1, AP[jc], 1, AP[jc], 1)
-                double ddot = 0.0, dtemp = 0.0;
-                int m_3 = (j - 1) % 5, i_3, mp1;
-                if(m_3 != 0) {
-                  for(i_3 = 1; i_3 <= m_3; i_3++)
-                    dtemp = dtemp + ap[jc - 1 + i_3 - 1] * ap[jc - 1 + i_3 - 1];
-                  if(j - 1 < 5) {
-                    ddot = dtemp;
-                    goto break_ddot;
-                  }
-                }
-                mp1 = m_3 + 1;
-                for(i_3 = mp1; i_3 <= j - 1; i_3 += 5) {
-                  dtemp = dtemp + 
-                    ap[jc + i_3 - 2] * ap[jc + i_3 - 2] +
-                    ap[jc + i_3 - 1] * ap[jc + i_3 - 1] +
-                    ap[jc + i_3 + 0] * ap[jc + i_3 + 0] +
-                    ap[jc + i_3 + 1] * ap[jc + i_3 + 1] +
-                    ap[jc + i_3 + 2] * ap[jc + i_3 + 2] ;
-                }
-                ddot = dtemp;
-break_ddot:
-                // end of ddot():113-127---------------------------
-
-                /* 190: Compute U(j, j) and test for non-positive-definitenss */
-                ajj = ap[jj] - ddot;
-                if(ajj <= 0) {
-                  ap[jj] = ajj;
-                  info = j;
-                  goto reply;
-                }
-                ap[jj] = sqrt(ajj);
               }
+              for (int i = 0; i < (n+1)*n/2; i++)
+                fprintf(stderr, "%lf ", ap[i]);
+              fprintf(stderr, "\n");
+              // solve LLT=b
+              b[0] = b[0] / ap[0];
+              for (int i = 2; i <= n; i++) {
+                sum = 0;
+                for (int j = 1; j <= i - 1; j++)
+                  sum += ap[i + (j-1)*(2*n-j)/2 - 1] * b[j - 1];
+                b[i - 1] = (b[i - 1] - sum) / ap[i + (i-1)*(2*n-i)/2 - 1];
+                fprintf(stderr, "%lf ", b[i-1]);
+              }
+              fprintf(stderr, "\n");
+              b[n - 1] = b[n - 1] / ap[n + n*(n-1)/2 - 1];
+              for(int i = n - 1; i > 0; i--) {
+                sum = 0;
+                for (int j = i + 1; j <= n; j++)
+                  sum += ap[j + (i-1)*(2*n-i)/2 - 1] * b[j - 1];
+                b[i - 1] = (b[i - 1] - sum) / ap[i + (i-1)*(2*n-i)/2 - 1];
+                fprintf(stderr, "%lf ", b[i-1]);
+              }
+              fprintf(stderr, "\n");
             }
-            else {
-              /* 206: Compute the Cholesky factorization A = L*L**T */
-              // TODO
-            }
-
-            // end of dpptrf()--------------------------------------
-
-            /* 193: Solve A * X = B, overwriting B with X */
-            /* 195: dpptrs(uplo, n, nrhs, ap, b, ldb) */
-
-            // end of dpptrs()--------------------------------------
+// finish            // end of dpptrs()--------------------------------------
 
 reply:
             /* prepare reply packets */
