@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
   ap_data = fopen(argv[1], "r");
   bx_data = fopen(argv[2], "r");
 
-  while(true)
+  //while(true)
     user_call_dppsv();
   return 0;
 }
