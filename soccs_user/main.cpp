@@ -66,12 +66,13 @@ void user_call_dppsv() {
 
 int main(int argc, char *argv[]) {
   if(argc != 3) {
-    fprintf(stderr, "make test\n");
+    fprintf(stderr, "Usage: ./(ref)?main [ap_data] [bx_data]\n");
     exit(EXIT_FAILURE);
   }
   ap_data = fopen(argv[1], "r");
   bx_data = fopen(argv[2], "r");
 
-  user_call_dppsv();
+  while(true)
+    user_call_dppsv();
   return 0;
 }
