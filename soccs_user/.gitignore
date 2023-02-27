@@ -6,3 +6,5 @@ ref_main
 
 *.o
 
+*.rs
+

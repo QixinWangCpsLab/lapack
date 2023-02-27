@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <chrono>
 
 #include "lapacke.h"
 
@@ -13,6 +14,8 @@
 #include "soccs_sce_client_server_protocol.h"
 #include "soccs_sce_tools.h"
 
+using namespace std;
+using namespace std::chrono;
 
 extern "C" {
   void 
@@ -93,6 +96,8 @@ void soccs_sce_lapack_dppsv (
   fprintf(stderr, "client: can enqueue now.\n");
 #endif
 
+  auto start0 = system_clock::now();
+
   uint8_t *raw_request_packet = malloc_straight(request_queue, req_packet_total_size);
   if(raw_request_packet == nullptr)
     throw "raw_request_packet == nullptr\n";
@@ -141,22 +146,16 @@ void soccs_sce_lapack_dppsv (
 #endif
 
 blocking_waiting_for_reply:
-  // TODO timer
 
   /* acquire reply queue lock */
   pthread_mutex_lock(&(reply_queue->meta_info.mutex));
+  auto start1 = system_clock::now();
 
   /* wait until reply_queue is not empty */
   while(!can_shallow_dequeue_straight(reply_queue)) {
     pthread_cond_wait(&(reply_queue->meta_info.can_consume),
         &(reply_queue->meta_info.mutex));
   }
-
-  // TODO timer
-
-#ifdef DEBUGGING
-  fprintf(stdout, "???\n");
-#endif
 
   /* get packet header <- reply queue */
   int reply_packet_size = 0;
@@ -174,7 +173,9 @@ blocking_waiting_for_reply:
     goto blocking_waiting_for_reply;
   }
 
+
   /* reply packet for me */
+  auto end1 = system_clock::now();
   if(reply_header->transaction_id != transaction_id)
     throw "wrong transaction_id\n";
   if(reply_header->function_id != LAPACK_DPPSV)
@@ -193,6 +194,14 @@ blocking_waiting_for_reply:
     ap[i] = rpl_pkt_flexible[i];
   for (int i = 0; i < len_B; i++)
     b[i] = rpl_pkt_flexible[len_AP + i];
+
+  auto end0 = system_clock::now();
+  auto duration0 = duration_cast<nanoseconds> (end0 - start0);
+  auto duration1 = duration_cast<nanoseconds> (end1 - start1);
+  fprintf(stderr, "\033[032mC-S-C Cost\n%ld (s) : %-9ld (ns)\033[0m\n",
+          duration0.count() / (long) 1e9, duration0.count() % (long) 1e9);
+  fprintf(stderr, "\033[032mServer Cost\n%ld (s) : %-9ld (ns)\033[0m\n",
+          duration1.count() / (long) 1e9, duration1.count() % (long) 1e9);
 
   /* free memory space in reply queue */
   reply_header = (struct reply_packet_header *)

@@ -2,7 +2,7 @@ LAPACKHOME := ..
 
 CC := g++
 
-CFLAGS := -O0 -g -ggdb -std=c++11 -DDEBUGGING $(DFLAG) -Wall \
+CFLAGS := -O3 -g -ggdb -std=c++11 $(DFLAG) -Wall \
 															-Wno-address-of-packed-member \
 															-Wno-unused-variable
 HD_DIR := -I$(LAPACKHOME)/LAPACKE/include
@@ -10,6 +10,8 @@ HD_DIR := -I$(LAPACKHOME)/LAPACKE/include
 LDFLAGS := -pthread -lrt
 
 LIB_DIR := 
+
+DFLAG :=
 
 CLIENT_OBJS += 	lapack_dppsv_client.o \
 								soccs_sce_client_server_circular_queue.o \
@@ -21,10 +23,10 @@ SERVER_OBJS += 	lapack_dppsv_server.o \
 
 # PACK CLIENT -> libsoccs_sce_lapack.a
 
-all: server libsoccs_sce_lapack.a
+all: server_soccs libsoccs_sce_lapack.a
 	@rm -f /dev/shm/shm_SoCCS_SCE_LAPACK_DPPSV	
 
-server: $(SERVER_OBJS)
+server_soccs: $(SERVER_OBJS)
 	$(CC) $^ $(CFLAGS) -o $@ $(HD_DIR) $(LDFLAGS)
 
 libsoccs_sce_lapack.a: $(CLIENT_OBJS)
@@ -36,7 +38,7 @@ libsoccs_sce_lapack.a: $(CLIENT_OBJS)
 
 .PHONY: clean debugging
 clean:
-	rm -f server *.a *.o 
+	rm -f server_soccs *.a *.o 
 	@rm -f /dev/shm/shm_SoCCS_SCE_LAPACK_DPPSV perf.data perf.data.old
 
 debugging:

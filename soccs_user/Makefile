@@ -2,7 +2,8 @@ WORKSPACE := ../..
 
 CC := g++
 
-CFLAGS := -g -Wall
+CFLAGS := -O3 -g -ggdb -std=c++11 -Wall \
+																	-Wno-unused-result
 
 HD_DIR := -I$(WORKSPACE)/lapack/LAPACKE/include
 
@@ -26,7 +27,13 @@ ref_main: main.o
 main.o: main.cpp
 	$(CC) $^ -c $(CFLAGS) -o $@ $(HD_DIR)
 
-.PHONY: clean
+.PHONY: clean test
 clean:
 	rm -f main ref_main *.o
+
+test:
+	make -B -s
+	@./ref_main ap_200x200.data bx_200x200.data > real.rs \
+		&& ./main ap_200x200.data bx_200x200.data > soccs.rs \
+		&& diff real.rs soccs.rs
 

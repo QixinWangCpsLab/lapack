@@ -11,7 +11,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
-
+#include <chrono>
 #include <time.h>
 #include <thread>
 
@@ -22,55 +22,66 @@
 #include "soccs_sce_tools.h"
 #include "soccs_sce_server_lapack_dppsv.h"
 
+using namespace std;
+using namespace std::chrono;
+
 static int fd_shm;
 static void *p_shm = nullptr;
 static struct circular_queue *request_queue = nullptr;
 static struct circular_queue *reply_queue = nullptr;
 static pthread_t server_pthread;
-static bool terminate = false;
+static bool terminated = false;
 
-static void sigint_handler(int sig) {
-  if(sig != SIGINT) return;
-  terminate = true;
+static void sigint_handler(int sig)
+{
+  if (sig != SIGINT)
+    return;
+  terminated = true;
   fprintf(stderr, "SIGINT received!\n");
 }
 
-static void *server_soccs(void *p_arg) {
+static void *server_soccs(void *p_arg)
+{
 
   /* server soccs_sce_lapack_dppsv */
   struct sched_param server_pthread_sched_param = {
-    .sched_priority = sched_get_priority_max(SCHED_FIFO)
-  };
-  pthread_setschedparam(pthread_self(), SCHED_FIFO, 
+    .sched_priority = sched_get_priority_max(SCHED_FIFO)};
+  pthread_setschedparam(pthread_self(), SCHED_FIFO,
       &server_pthread_sched_param);
 
-  struct circular_queue *request_queue = 
+  struct circular_queue *request_queue =
     ((struct soccs_sce_server_pthread_argument *)p_arg)->p_c2s_queue;
   struct circular_queue *reply_queue =
     ((struct soccs_sce_server_pthread_argument *)p_arg)->p_s2c_queue;
+  auto start = system_clock::now(), end = system_clock::now();
+  auto duration = duration_cast<nanoseconds> (end - start);
 
-  try {
-    while (terminate == false) {
+  try
+  {
+    while (terminated == false)
+    {
       /* work loop */
 
       // TODO timer
 
       /* acquire request queue lock */
       pthread_mutex_lock(&request_queue->meta_info.mutex);
-      while (!can_shallow_dequeue_straight(request_queue)) {
+      while (!can_shallow_dequeue_straight(request_queue))
+      {
         /* wait until any request packets or timeout */
         struct timespec abs_timeout = {
-          .tv_sec = 0, .tv_nsec = 0
-        };
-        if(clock_gettime(CLOCK_REALTIME, &abs_timeout) < 0)
+          .tv_sec = 0, .tv_nsec = 0};
+        if (clock_gettime(CLOCK_REALTIME, &abs_timeout) < 0)
           throw "clock_gettime failed.\n";
         calc_timespec_sum(&wait_timeout, &abs_timeout);
         pthread_cond_timedwait(&request_queue->meta_info.can_consume,
             &(request_queue->meta_info.mutex), &abs_timeout);
-        if(terminate == true) break;
+        if (terminated == true)
+          break;
       }
 
-      if(terminate == true) {
+      if (terminated == true)
+      {
         pthread_mutex_unlock(&(request_queue->meta_info.mutex));
         break;
       }
@@ -81,11 +92,11 @@ static void *server_soccs(void *p_arg) {
 
       /* receive request packet header */
       int request_packet_size = 0;
-      struct request_packet_header *request_header = 
-        (struct request_packet_header *) shallow_dequeue_straight
-        (request_queue, &request_packet_size);
+      struct request_packet_header *request_header =
+        (struct request_packet_header *)
+        shallow_dequeue_straight(request_queue, &request_packet_size);
 
-      if(request_packet_size <= 0 || request_header == nullptr)
+      if (request_packet_size <= 0 || request_header == nullptr)
         throw "request_packet_size <= 0 || request_header == nullptr";
 
       /* work */
@@ -95,41 +106,35 @@ static void *server_soccs(void *p_arg) {
           {
 
 #ifdef DEBUGGING
-            fprintf(stderr, "received packet from client %u\n", 
+            fprintf(stderr, "received packet from client %u\n",
                 request_header->client_pthread_id);
 #endif
-            struct request_lapack_dppsv_fixed *req_pkt_fixed = 
+            struct request_lapack_dppsv_fixed *req_pkt_fixed =
               reinterpret_cast<struct request_lapack_dppsv_fixed *>
               (request_header + 1);
-            const char uplo       = req_pkt_fixed->uplo;
-            const lapack_int n    = req_pkt_fixed->n;
+            const char uplo = req_pkt_fixed->uplo;
+            const lapack_int n = req_pkt_fixed->n;
             const lapack_int nrhs = req_pkt_fixed->nrhs;
-            const lapack_int ldb  = req_pkt_fixed->ldb;
-            const lapack_int len_AP  = n * (n + 1) / 2;
-            const lapack_int len_B   = ldb * nrhs;
-            lapack_int info          = 0;
-            double *ap  = (double *) malloc (len_AP * sizeof(double));
-            double *b   = (double *) malloc (len_B * sizeof(double));
-/*
-n = 4
-ap = n*(n+1)/2 = 10
-b = n = 4
-ap[i][j] = ap[?]
-*/
-            double *req_pkt_flexible = 
-              reinterpret_cast<double *> (req_pkt_fixed + 1);
-            for(int i = 0; i < len_AP; i++)
+            const lapack_int ldb = req_pkt_fixed->ldb;
+            const lapack_int len_AP = n * (n + 1) / 2;
+            const lapack_int len_B = ldb * nrhs;
+            lapack_int info = 0;
+            double *ap = (double *)malloc(len_AP * sizeof(double));
+            double *b = (double *)malloc(len_B * sizeof(double));
+            double *req_pkt_flexible =
+              reinterpret_cast<double *>(req_pkt_fixed + 1);
+            for (int i = 0; i < len_AP; i++)
               ap[i] = req_pkt_flexible[i];
-            for(int i = 0; i < len_B; i++)
+            for (int i = 0; i < len_B; i++)
               b[i] = req_pkt_flexible[len_AP + i];
 
 #ifdef DEBUGGING
             fprintf(stderr, "ap[%d]={", len_AP);
-            for(int i = 0; i < len_AP; i++)
+            for (int i = 0; i < len_AP; i++)
               fprintf(stderr, " %lf", ap[i]);
             fprintf(stderr, " }\n");
             fprintf(stderr, "b[%d]={", len_B);
-            for(int i = 0; i < len_B; i++)
+            for (int i = 0; i < len_B; i++)
               fprintf(stderr, " %lf", b[i]);
             fprintf(stderr, " }\n");
 #endif
@@ -147,50 +152,54 @@ ap[i][j] = ap[?]
               goto reply; // no need to calculate
 
             /* calculation starts from here */
-//start            /* 190: dpptrf( uplo, n, ap) */
-            if (uplo == 'L' || uplo == 'l') { 
-            fprintf(stderr, "enter L\n");
+            // start            /* 190: dpptrf( uplo, n, ap) */
+            start = system_clock::now();
+            if (uplo == 'L' || uplo == 'l')
+            {
               ap[0] = sqrt(ap[0]);
               for (int i = 1; i < n; i++)
                 ap[i] = ap[i] / ap[0];
               double sum = 0;
-              for (int j = 2; j <= n; j++) {
+              for (int j = 2; j <= n; j++)
+              {
                 sum = 0;
                 for (int k = 1; k < j; k++)
-                  sum += ap[j + (k-1)*(2*n-k)/2 - 1] * ap[j + (k-1)*(n*2-k)/2 - 1];
-                ap[j + (j-1)*(2*n-j)/2 - 1] = sqrt(ap[j + (j-1)*(2*n-j)/2 - 1] - sum);
-                for (int i = j + 1; i <= n; i++) {
+                  sum += ap[j+(k-1)*(2*n-k)/2-1] * ap[j+(k-1)*(n*2-k)/2-1];
+                ap[j+(j-1)*(2*n-j)/2-1] = sqrt(ap[j+(j-1)*(2*n-j)/2-1] - sum);
+                for (int i = j + 1; i <= n; i++)
+                {
                   sum = 0;
-                  fprintf(stderr, "%d %d\n", i, j);
-                  for (int k = 1; k <= j-1; k++)
-                    sum += ap[i + (k-1)*(2*n-k)/2 - 1] * ap[j + (k-1)*(2*n-k)/2 - 1];
-                  ap[i + (j-1)*(2*n-j)/2 - 1] = (ap[i + (j-1)*(2*n-j)/2 - 1] - sum) / ap[j + (j-1)*(2*n-j)/2 - 1];
+                  for (int k = 1; k <= j - 1; k++)
+                  {
+                    sum += ap[i+(k-1)*(2*n-k)/2-1] * ap[j+(k-1)*(2*n-k)/2-1];
+                  }
+                  ap[i+(j-1)*(2*n-j)/2-1] = 
+                    (ap[i+(j-1)*(2*n-j)/2-1] - sum) / ap[j+(j-1)*(2*n-j)/2-1];
                 }
               }
-              for (int i = 0; i < (n+1)*n/2; i++)
-                fprintf(stderr, "%lf ", ap[i]);
-              fprintf(stderr, "\n");
               // solve LLT=b
               b[0] = b[0] / ap[0];
-              for (int i = 2; i <= n; i++) {
+              for (int i = 2; i <= n; i++)
+              {
                 sum = 0;
                 for (int j = 1; j <= i - 1; j++)
-                  sum += ap[i + (j-1)*(2*n-j)/2 - 1] * b[j - 1];
-                b[i - 1] = (b[i - 1] - sum) / ap[i + (i-1)*(2*n-i)/2 - 1];
-                fprintf(stderr, "%lf ", b[i-1]);
+                  sum += ap[i+(j-1)*(2*n-j)/2-1] * b[j-1];
+                b[i-1] = (b[i-1] - sum) / ap[i+(i-1)*(2*n-i)/2-1];
               }
-              fprintf(stderr, "\n");
-              b[n - 1] = b[n - 1] / ap[n + n*(n-1)/2 - 1];
-              for(int i = n - 1; i > 0; i--) {
+              b[n-1] = b[n-1] / ap[n+n*(n-1)/2-1];
+              for (int i = n - 1; i > 0; i--)
+              {
                 sum = 0;
                 for (int j = i + 1; j <= n; j++)
-                  sum += ap[j + (i-1)*(2*n-i)/2 - 1] * b[j - 1];
-                b[i - 1] = (b[i - 1] - sum) / ap[i + (i-1)*(2*n-i)/2 - 1];
-                fprintf(stderr, "%lf ", b[i-1]);
+                  sum += ap[j+(i-1)*(2*n-i)/2-1] * b[j-1];
+                b[i-1] = (b[i-1] - sum) / ap[i+(i-1)*(2*n-i)/2-1];
               }
-              fprintf(stderr, "\n");
             }
-// finish            // end of dpptrs()--------------------------------------
+            end = system_clock::now();
+            duration = duration_cast<nanoseconds> (end - start);
+            fprintf(stderr, "\033[032mTotal Cost\n%ld (s) : %-9ld (ns)\033[0m\n",
+                duration.count() / (long) 1e9, duration.count() % (long) 1e9);
+            // finish            // end of dpptrs()--------------------------------------
 
 reply:
             /* prepare reply packets */
@@ -198,27 +207,29 @@ reply:
             fprintf(stderr, "server: ready to reply\n");
 #endif
             int rpl_packet_payload_size = sizeof(reply_lapack_dppsv_fixed) +
-              len_AP * sizeof(double) + len_B *sizeof(double);
-            int rpl_packet_total_size = sizeof(struct reply_packet_header) + 
+              len_AP * sizeof(double) + len_B * sizeof(double);
+            int rpl_packet_total_size = sizeof(struct reply_packet_header) +
               rpl_packet_payload_size;
 
             // TODO timer
 
             pthread_mutex_lock(&(reply_queue->meta_info.mutex));
-            while(!can_malloc_straight(reply_queue, rpl_packet_total_size)) {
+            while (!can_malloc_straight(reply_queue, rpl_packet_total_size))
+            {
               /* wait until there is space in reply queue or timeout */
               struct timespec abs_timeout = {
-                .tv_sec = 0, .tv_nsec = 0
-              };
-              if(clock_gettime(CLOCK_REALTIME, &abs_timeout) < 0)
+                .tv_sec = 0, .tv_nsec = 0};
+              if (clock_gettime(CLOCK_REALTIME, &abs_timeout) < 0)
                 throw "clock_gettime failed.\n";
               calc_timespec_sum(&wait_timeout, &abs_timeout);
               pthread_cond_timedwait(&(reply_queue->meta_info.can_produce),
                   &(reply_queue->meta_info.mutex), &abs_timeout);
-              if(terminate == true) break;
+              if (terminated == true)
+                break;
             }
 
-            if(terminate == true) {
+            if (terminated == true)
+            {
               pthread_mutex_unlock(&(reply_queue->meta_info.mutex));
               pthread_mutex_unlock(&(request_queue->meta_info.mutex));
               break; // break switch
@@ -228,33 +239,32 @@ reply:
             fprintf(stderr, "server: can enqueue now.\n");
 #endif
 
-            uint8_t *raw_reply_packet = 
+            uint8_t *raw_reply_packet =
               malloc_straight(reply_queue, rpl_packet_total_size);
-            if(raw_reply_packet == nullptr)
+            if (raw_reply_packet == nullptr)
               throw "raw_reply_packet == nullptr";
 
             /* load packet header -> reply queue */
-            struct reply_packet_header *reply_header = 
-              (struct reply_packet_header *) raw_reply_packet;
-            reply_header->common_header.preamble    = (uint32_t) (PREAMBLE);
+            struct reply_packet_header *reply_header =
+              (struct reply_packet_header *)raw_reply_packet;
+            reply_header->common_header.preamble = (uint32_t)(PREAMBLE);
             reply_header->common_header.packet_size = rpl_packet_total_size;
             reply_header->client_pthread_id = request_header->client_pthread_id;
-            reply_header->transaction_id    = request_header->transaction_id;
-            reply_header->function_id       = request_header->function_id;
-            reply_header->payload_len       = rpl_packet_payload_size;
+            reply_header->transaction_id = request_header->transaction_id;
+            reply_header->function_id = request_header->function_id;
+            reply_header->payload_len = rpl_packet_payload_size;
 
             /* load fixed part -> reply queue */
-            struct reply_lapack_dppsv_fixed *rpl_pkt_fixed = 
-              reinterpret_cast<reply_lapack_dppsv_fixed *>
-              (reply_header + 1);
-            rpl_pkt_fixed->info   = info;
+            struct reply_lapack_dppsv_fixed *rpl_pkt_fixed =
+              reinterpret_cast<reply_lapack_dppsv_fixed *>(reply_header + 1);
+            rpl_pkt_fixed->info = info;
 
             /* load flexible part -> reply queue */
-            double *rpl_pkt_flexible = 
-              reinterpret_cast<double *> (rpl_pkt_fixed + 1);
-            for(int i = 0; i < len_AP; i++)
+            double *rpl_pkt_flexible =
+              reinterpret_cast<double *>(rpl_pkt_fixed + 1);
+            for (int i = 0; i < len_AP; i++)
               rpl_pkt_flexible[i] = ap[i];
-            for(int i = 0; i < len_B; i++)
+            for (int i = 0; i < len_B; i++)
               rpl_pkt_flexible[len_AP + i] = b[i];
             // TODO timer
 
@@ -274,14 +284,17 @@ reply:
 
       } // end of switch
 
-      if(terminate == true) {
+      if (terminated == true)
+      {
         pthread_mutex_unlock(&(reply_queue->meta_info.mutex));
         pthread_mutex_unlock(&(reply_queue->meta_info.mutex));
         break; // break while
       }
 
     } // end of while
-  } catch (const char *msg) {
+  }
+  catch (const char *msg)
+  {
     fprintf(stderr, "worker thread exception: %s", msg);
     return nullptr;
   }
@@ -289,16 +302,19 @@ reply:
   return nullptr;
 }
 
-int main(int argc, char *argv[], char *envp[]) {
+int main(int argc, char *argv[], char *envp[])
+{
 
   /* server */
-  if(argc != 3) {
+  if (argc != 3)
+  {
     fprintf(stderr, "Usage: ./server <num_cores> <server_core_index>\n");
     exit(EXIT_FAILURE);
   }
   signal(SIGINT, sigint_handler);
 
-  try {
+  try
+  {
     /* bind cpu core to server thread */
     int num_cpus = atoi(argv[1]);
     int server_core_index = atoi(argv[2]);
@@ -310,25 +326,23 @@ int main(int argc, char *argv[], char *envp[]) {
     pthread_attr_init(&server_thread_attr);
     pthread_attr_setaffinity_np(&server_thread_attr, cpuset_size, cpuset);
 
-    if ((fd_shm = shm_open(SHARED_MEM_NAME_LAPACK_DPPSV, 
+    if ((fd_shm = shm_open(SHARED_MEM_NAME_LAPACK_DPPSV,
             O_RDWR | O_CREAT /*| O_EXCL*/, 0666)) == -1)
       throw "shm_open failed.\n";
     if (ftruncate(fd_shm, SHARED_MEM_SIZE) == -1)
       throw "ftrancate failed.\n";
-    if ((p_shm = mmap(NULL, SHARED_MEM_SIZE, PROT_READ | PROT_WRITE, 
+    if ((p_shm = mmap(NULL, SHARED_MEM_SIZE, PROT_READ | PROT_WRITE,
             MAP_SHARED, fd_shm, 0)) == MAP_FAILED)
       throw "mmap failed.\n";
 
-    request_queue = (struct circular_queue *) p_shm;
+    request_queue = (struct circular_queue *)p_shm;
     init_circular_queue(request_queue);
-    reply_queue = (struct circular_queue *) 
-      (((uint8_t *) p_shm) + sizeof(struct circular_queue));
+    reply_queue = (struct circular_queue *)(((uint8_t *)p_shm) + sizeof(struct circular_queue));
     init_circular_queue(reply_queue);
 
     struct soccs_sce_server_pthread_argument pthread_arg = {
       .p_c2s_queue = request_queue,
-      .p_s2c_queue = reply_queue
-    };
+      .p_s2c_queue = reply_queue};
 
     fprintf(stderr, "Shared memory '%s'of %u bytes "
         "created and mmaped at virtual address %p.\n",
@@ -341,8 +355,8 @@ int main(int argc, char *argv[], char *envp[]) {
         sizeof(struct circular_queue), reply_queue);
 
     /* create server thread */
-    pthread_create(&server_pthread, &server_thread_attr, server_soccs, 
-        (void*) &pthread_arg);
+    pthread_create(&server_pthread, &server_thread_attr, server_soccs,
+        (void *)&pthread_arg);
     fprintf(stderr, "Main server thread %u created.\n",
         pthread_t_to_uint32_t(server_pthread));
 
@@ -352,7 +366,9 @@ int main(int argc, char *argv[], char *envp[]) {
     close(fd_shm);
     shm_unlink(SHARED_MEM_NAME_LAPACK_DPPSV);
     fprintf(stderr, "Main server thread: exited.\n");
-  } catch (const char *msg) {
+  }
+  catch (const char *msg)
+  {
     fprintf(stderr, "\n Exception: %s", msg);
     fprintf(stderr, "\n errno: %s\n", strerror(errno));
   }
@@ -361,4 +377,3 @@ int main(int argc, char *argv[], char *envp[]) {
 
   return 0;
 }
-
