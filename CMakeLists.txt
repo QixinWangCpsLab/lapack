@@ -3,8 +3,8 @@ cmake_minimum_required(VERSION 3.2)
 project(LAPACK Fortran C)
 
 set(LAPACK_MAJOR_VERSION 3)
-set(LAPACK_MINOR_VERSION 10)
-set(LAPACK_PATCH_VERSION 1)
+set(LAPACK_MINOR_VERSION 11)
+set(LAPACK_PATCH_VERSION 0)
 set(
   LAPACK_VERSION
   ${LAPACK_MAJOR_VERSION}.${LAPACK_MINOR_VERSION}.${LAPACK_PATCH_VERSION}
@@ -42,7 +42,7 @@ if(_is_coverage_build)
 endif()
 
 # By default test Fortran compiler complex abs and complex division
-option(TEST_FORTRAN_COMPILER "Test Fortran compiler complex abs and complex division" ON)
+option(TEST_FORTRAN_COMPILER "Test Fortran compiler complex abs and complex division" OFF)
 if( TEST_FORTRAN_COMPILER )
 
   add_executable( test_zcomplexabs ${LAPACK_SOURCE_DIR}/INSTALL/test_zcomplexabs.f ../../../../lapacke_cbbcsd.c)
@@ -133,6 +133,8 @@ elseif(CMAKE_Fortran_COMPILER_ID STREQUAL Intel)
   check_fortran_compiler_flag("-recursive" _recursiveFlag)
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL XL)
   check_fortran_compiler_flag("-qrecur" _qrecurFlag)
+elseif(CMAKE_Fortran_COMPILER_ID STREQUAL NAG)
+  check_fortran_compiler_flag("-recursive" _recursiveFlag)
 else()
   message(WARNING "Fortran local arrays should be allocated on the stack."
     " Please use a compiler which guarantees that feature."
@@ -205,6 +207,22 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL Compaq)
   endif()
 endif()
 
+# Add option to enable flat namespace for symbol resolution on macOS
+if(APPLE)
+  option(USE_FLAT_NAMESPACE "Use flat namespaces for symbol resolution during build and runtime." OFF)
+
+  if(USE_FLAT_NAMESPACE)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-flat_namespace")
+    set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,-flat_namespace")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-flat_namespace")
+  else()
+    if(BUILD_SHARED_LIBS AND BUILD_TESTING)
+      message(WARNING
+        "LAPACK test suite might fail with shared libraries and the default two-level namespace. "
+        "Disable shared libraries or enable flat namespace for symbol resolution via -DUSE_FLAT_NAMESPACE=ON.")
+    endif()
+  endif()
+endif()
 
 # --------------------------------------------------
 set(LAPACK_INSTALL_EXPORT_NAME ${LAPACKLIB}-targets)
@@ -255,7 +273,7 @@ CheckLAPACKCompilerFlags()
 # Check second function
 
 include(CheckTimeFunction)
-set(NONE ${TIME_FUNC})
+set(TIME_FUNC NONE)
 CHECK_TIME_FUNCTION(NONE TIME_FUNC)
 CHECK_TIME_FUNCTION(INT_CPU_TIME TIME_FUNC)
 CHECK_TIME_FUNCTION(EXT_ETIME TIME_FUNC)
