@@ -9,17 +9,12 @@ using namespace std;
 using namespace std::chrono;
 
 static FILE *ap_data, *bx_data;
+double *ap, *bx;
+int layout;
+lapack_int n, nrhs, ldb;
+char uplo;
 
-void user_call_dppsv() {
-  int					layout	= 	LAPACK_COL_MAJOR;
-  char 				uplo 		= 	'L'; // 'U'
-  lapack_int 	n 			=		200;
-  lapack_int 	nrhs		=		1;
-  lapack_int	ldb 		=		n;
-
-  double *ap = (double *) malloc (n * (n + 1) / 2 * sizeof(double));
-  double *bx = (double *) malloc (nrhs * ldb * sizeof(double));
-
+void user_call_dgesvd() { 
   char sd[32];
   int k = 0;
   for(int i = 0; i < n; i++) {
@@ -56,7 +51,8 @@ void user_call_dppsv() {
       fprintf(stdout, "%lf ", bx[i]);
     }
     fprintf(stdout, "\n");
-
+    fclose(ap_data);
+    fclose(bx_data);
   } catch (const char *msg) {
     fprintf(stderr, "client throws: %s\n", msg);
     fprintf(stderr, "errno: %s\n", strerror(errno));
@@ -66,13 +62,24 @@ void user_call_dppsv() {
 
 int main(int argc, char *argv[]) {
   if(argc != 3) {
-    fprintf(stderr, "Usage: ./(ref)?main [ap_data] [bx_data]\n");
+    fprintf(stderr, "Args: [ap_data] [bx_data]\n");
     exit(EXIT_FAILURE);
   }
-  ap_data = fopen(argv[1], "r");
-  bx_data = fopen(argv[2], "r");
 
-  //while(true)
+  layout  = 	LAPACK_COL_MAJOR;
+  uplo 		= 	'L'; // 'U'
+  n 			=		200;
+  nrhs		=		1;
+  ldb 		=		n;
+
+  ap = (double *) malloc (n * (n + 1) / 2 * sizeof(double));
+  bx = (double *) malloc (nrhs * ldb * sizeof(double));
+
+  while(true) {
+    ap_data = fopen(argv[1], "r");
+    bx_data = fopen(argv[2], "r");
     user_call_dppsv();
+  }
+
   return 0;
 }

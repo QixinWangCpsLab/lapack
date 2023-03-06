@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <sys/prctl.h>
 #include <chrono>
 #include <time.h>
 #include <thread>
@@ -42,7 +43,7 @@ static void sigint_handler(int sig)
 
 static void *server_soccs(void *p_arg)
 {
-
+  prctl(PR_SET_NAME, "soccs_server");
   /* server soccs_sce_lapack_dppsv */
   struct sched_param server_pthread_sched_param = {
     .sched_priority = sched_get_priority_max(SCHED_FIFO)};
@@ -119,8 +120,8 @@ static void *server_soccs(void *p_arg)
             const lapack_int len_AP = n * (n + 1) / 2;
             const lapack_int len_B = ldb * nrhs;
             lapack_int info = 0;
-            double *ap = (double *)malloc(len_AP * sizeof(double));
-            double *b = (double *)malloc(len_B * sizeof(double));
+            double *ap = (double *) malloc (len_AP * sizeof(double));
+            double *b = (double *) malloc (len_B * sizeof(double));
             double *req_pkt_flexible =
               reinterpret_cast<double *>(req_pkt_fixed + 1);
             for (int i = 0; i < len_AP; i++)
@@ -197,8 +198,10 @@ static void *server_soccs(void *p_arg)
             }
             end = system_clock::now();
             duration = duration_cast<nanoseconds> (end - start);
+#ifdef TESTING
             fprintf(stderr, "\033[032mTotal Cost\n%ld (s) : %-9ld (ns)\033[0m\n",
                 duration.count() / (long) 1e9, duration.count() % (long) 1e9);
+#endif
             // finish            // end of dpptrs()--------------------------------------
 
 reply:
@@ -278,6 +281,8 @@ reply:
 #ifdef DEBUGGING
             fprintf(stderr, "finish 1 DPPSV.\n");
 #endif
+            free(ap);
+            free(b);
 
             break;
           }
