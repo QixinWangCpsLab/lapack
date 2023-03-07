@@ -323,4 +323,3 @@ extern uint8_t * peek_shallow_dequeue_straight(struct circular_queue *p_circular
 
 #endif
 
-// code review reached here on 22/9/2022

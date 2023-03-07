@@ -41,7 +41,7 @@ lapack_int LAPACKE_dgesvd_work( int matrix_layout, char jobu, char jobvt,
     lapack_int info = 0;
     if( matrix_layout == LAPACK_COL_MAJOR ) {
         /* Call LAPACK function and adjust info */
-        LAPACK_dgesvd( &jobu, &jobvt, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt,
+        soccs_sce_lapack_dgesvd( &jobu, &jobvt, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt,
                        work, &lwork, &info );
         if( info < 0 ) {
             info = info - 1;
@@ -79,7 +79,7 @@ lapack_int LAPACKE_dgesvd_work( int matrix_layout, char jobu, char jobvt,
         }
         /* Query optimal working array(s) size if requested */
         if( lwork == -1 ) {
-            LAPACK_dgesvd( &jobu, &jobvt, &m, &n, a, &lda_t, s, u, &ldu_t, vt,
+            soccs_sce_lapack_dgesvd( &jobu, &jobvt, &m, &n, a, &lda_t, s, u, &ldu_t, vt,
                            &ldvt_t, work, &lwork, &info );
             return (info < 0) ? (info - 1) : info;
         }
@@ -108,7 +108,7 @@ lapack_int LAPACKE_dgesvd_work( int matrix_layout, char jobu, char jobvt,
         /* Transpose input matrices */
         LAPACKE_dge_trans( matrix_layout, m, n, a, lda, a_t, lda_t );
         /* Call LAPACK function and adjust info */
-        LAPACK_dgesvd( &jobu, &jobvt, &m, &n, a_t, &lda_t, s, u_t, &ldu_t, vt_t,
+        soccs_sce_lapack_dgesvd( &jobu, &jobvt, &m, &n, a_t, &lda_t, s, u_t, &ldu_t, vt_t,
                        &ldvt_t, work, &lwork, &info );
         if( info < 0 ) {
             info = info - 1;

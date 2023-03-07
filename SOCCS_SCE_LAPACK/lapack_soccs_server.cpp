@@ -16,8 +16,6 @@
 #include <time.h>
 #include <thread>
 
-#include "lapacke.h"
-
 #include "soccs_sce_client_server_circular_queue.h"
 #include "soccs_sce_client_server_protocol.h"
 #include "soccs_sce_tools.h"
@@ -198,10 +196,12 @@ static void *server_soccs(void *p_arg)
             }
             end = system_clock::now();
             duration = duration_cast<nanoseconds> (end - start);
+
 #ifdef TESTING
             fprintf(stderr, "\033[032mTotal Cost\n%ld (s) : %-9ld (ns)\033[0m\n",
                 duration.count() / (long) 1e9, duration.count() % (long) 1e9);
 #endif
+
             // finish            // end of dpptrs()--------------------------------------
 
 reply:
@@ -213,8 +213,6 @@ reply:
               len_AP * sizeof(double) + len_B * sizeof(double);
             int rpl_packet_total_size = sizeof(struct reply_packet_header) +
               rpl_packet_payload_size;
-
-            // TODO timer
 
             pthread_mutex_lock(&(reply_queue->meta_info.mutex));
             while (!can_malloc_straight(reply_queue, rpl_packet_total_size))
@@ -269,7 +267,6 @@ reply:
               rpl_pkt_flexible[i] = ap[i];
             for (int i = 0; i < len_B; i++)
               rpl_pkt_flexible[len_AP + i] = b[i];
-            // TODO timer
 
             /* broadcast to clients and release lock */
             pthread_cond_broadcast(&(reply_queue->meta_info.can_consume));
@@ -281,6 +278,7 @@ reply:
 #ifdef DEBUGGING
             fprintf(stderr, "finish 1 DPPSV.\n");
 #endif
+
             free(ap);
             free(b);
 
@@ -349,6 +347,7 @@ int main(int argc, char *argv[], char *envp[])
       .p_c2s_queue = request_queue,
       .p_s2c_queue = reply_queue};
 
+#ifdef DEBUGGING
     fprintf(stderr, "Shared memory '%s'of %u bytes "
         "created and mmaped at virtual address %p.\n",
         SHARED_MEM_NAME_LAPACK_DPPSV, SHARED_MEM_SIZE, p_shm);
@@ -358,12 +357,11 @@ int main(int argc, char *argv[], char *envp[])
     fprintf(stderr, "s2c_queue of %lu bytes "
         "allocated and initialized at virtual address %p.\n",
         sizeof(struct circular_queue), reply_queue);
+#endif
 
     /* create server thread */
     pthread_create(&server_pthread, &server_thread_attr, server_soccs,
         (void *)&pthread_arg);
-    fprintf(stderr, "Main server thread %u created.\n",
-        pthread_t_to_uint32_t(server_pthread));
 
     /* wait for the server thread */
     pthread_join(server_pthread, NULL);

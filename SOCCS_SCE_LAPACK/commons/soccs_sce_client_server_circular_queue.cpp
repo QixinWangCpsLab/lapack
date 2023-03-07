@@ -28,7 +28,7 @@ bool can_malloc_straight(
   }
   else
     return (p_circular_queue->meta_info.head >
-            p_circular_queue->meta_info.tail + count_of_bytes);
+        p_circular_queue->meta_info.tail + count_of_bytes);
 }
 
 uint8_t *malloc_straight(
@@ -86,7 +86,7 @@ uint8_t *malloc_straight(
   else
   {
     if (p_circular_queue->meta_info.head > p_circular_queue->meta_info.tail +
-                                               (uint64_t)count_of_bytes)
+        (uint64_t)count_of_bytes)
     {
       uint8_t *result = ((uint8_t *)(p_circular_queue->data)) + p_circular_queue->meta_info.tail;
       p_circular_queue->meta_info.tail += count_of_bytes;
@@ -118,7 +118,7 @@ bool can_shallow_dequeue_straight(struct circular_queue *p_circular_queue)
   }
   uint8_t *p_packet = ((uint8_t *)(p_circular_queue->data)) + p_circular_queue->meta_info.head;
   struct circular_queue_packet_common_header *p_common_header =
-      (struct circular_queue_packet_common_header *)p_packet;
+    (struct circular_queue_packet_common_header *)p_packet;
   assert(p_common_header->preamble == PREAMBLE);
   uint32_t packet_size = p_common_header->packet_size;
 
@@ -152,7 +152,7 @@ uint8_t *shallow_dequeue_straight(struct circular_queue *p_circular_queue, int *
   }
   uint8_t *p_packet = ((uint8_t *)(p_circular_queue->data)) + p_circular_queue->meta_info.head;
   struct circular_queue_packet_common_header *p_common_header =
-      (struct circular_queue_packet_common_header *)p_packet;
+    (struct circular_queue_packet_common_header *)p_packet;
   assert(p_common_header->preamble == PREAMBLE);
   uint32_t packet_size = p_common_header->packet_size;
 
@@ -199,7 +199,7 @@ uint8_t *peek_shallow_dequeue_straight(struct circular_queue *p_circular_queue, 
   }
   uint8_t *p_packet = ((uint8_t *)(p_circular_queue->data)) + p_circular_queue->meta_info.head;
   struct circular_queue_packet_common_header *p_common_header =
-      (struct circular_queue_packet_common_header *)p_packet;
+    (struct circular_queue_packet_common_header *)p_packet;
   assert(p_common_header->preamble == PREAMBLE);
   uint32_t packet_size = p_common_header->packet_size;
 
@@ -214,3 +214,4 @@ uint8_t *peek_shallow_dequeue_straight(struct circular_queue *p_circular_queue, 
   p_circular_queue->meta_info.tail = old_tail; // unnecesary, put here just for extra
   return p_packet;
 }
+

@@ -1,9 +1,33 @@
 #ifndef _SOCCS_SCE_PROTOCOL_H_
 #define _SOCCS_SCE_PROTOCOL_H_
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <stdint.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <pthread.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <sys/prctl.h>
+
+#include <errno.h>
+#include <time.h>
+
+#include <math.h>
+
+#include <thread>
+#include <chrono>
+
 #include "lapacke.h"
 #include "soccs_sce_client_server_circular_queue.h"
+
+using namespace std;
+using namespace std::chrono;
 
 #define MAX_REQEUST_PAYLOAD_LEN \
   (MAX_CIRCULAR_QUEUE_PACKET_SIZE - sizeof(struct request_packet_header))
@@ -13,7 +37,7 @@
 
 enum function_id : uint16_t {
   LAPACK_DPPSV,
-  // UNDEFINED  // undefined function id
+  LAPACK_DGESVD
 };
 
 struct request_packet_header {
@@ -47,7 +71,29 @@ struct reply_lapack_dppsv_fixed {
   lapack_int info;
 } __attribute__((packed));
 
+struct request_lapack_dgesvd_fixed {
+  char jobu;
+  char jobvt;
+  lapack_int m;
+  lapack_int n;
+  // double *a;   flexible
+  lapack_int lda;
+  lapack_int ldu;
+  lapack_int ldvt;
+  lapack_int lwork;
+} __attribute__((packed));
+
+struct reply_lapack_dgesvd_fixed {
+  // double *a;     flexible
+  // double *s;     flexible
+  // double *u;     flexible
+  // double *vt;    flexible
+  // double *work;  flexible
+  lapack_int info;
+} __attribute__((packed));
+
 #define SHARED_MEM_NAME_LAPACK_DPPSV "/shm_SoCCS_SCE_LAPACK_DPPSV"
+#define SHARED_MEM_NAME_LAPACK_DGESVD "/dhm_SoCCS_SCE_LAPACK_DGESVD"
 
 #endif
 

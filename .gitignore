@@ -52,5 +52,5 @@ output_err
 *cmake-build-debug/
 
 test/
-
+LAPACKE/include/lapacke_mangling.h
 

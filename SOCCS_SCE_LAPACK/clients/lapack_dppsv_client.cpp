@@ -1,27 +1,20 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <pthread.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <chrono>
-
-#include "lapacke.h"
-
 #include "soccs_sce_client_server_circular_queue.h"
 #include "soccs_sce_client_server_protocol.h"
 #include "soccs_sce_tools.h"
-
-using namespace std;
-using namespace std::chrono;
 
 extern "C" {
   void 
     soccs_sce_lapack_dppsv (
         char *uplo, lapack_int *n, lapack_int *nrhs,
         double *ap, double *b, lapack_int *ldb,
+        lapack_int *info);
+  void
+    soccs_sce_lapack_dgesvd (
+        char *jobu, char *jobvt,
+        lapack_int *m, lapack_int *n,
+        double *a, lapack_int *lda, double *s, double *u,
+        lapack_int *ldu, double *vt, lapack_int *ldvt,
+        double *work, double *lwork,
         lapack_int *info);
 }
 
@@ -80,8 +73,6 @@ void soccs_sce_lapack_dppsv (
   int req_packet_total_size = sizeof(struct request_packet_header) +
     req_packet_payload_size;
 
-  // TODO timer
-
   /* acquire request queue lock */
   pthread_mutex_lock(&(request_queue->meta_info.mutex));
   while (!can_malloc_straight(request_queue, req_packet_total_size)) {
@@ -89,8 +80,6 @@ void soccs_sce_lapack_dppsv (
     pthread_cond_wait(&(request_queue->meta_info.can_produce),
         &(request_queue->meta_info.mutex));
   }
-
-  // TODO timer
 
 #ifdef DEBUGGING
   fprintf(stderr, "client: can enqueue now.\n");
@@ -173,7 +162,6 @@ blocking_waiting_for_reply:
     goto blocking_waiting_for_reply;
   }
 
-
   /* reply packet for me */
   auto end1 = system_clock::now();
   if(reply_header->transaction_id != transaction_id)
@@ -199,9 +187,9 @@ blocking_waiting_for_reply:
   auto duration0 = duration_cast<nanoseconds> (end0 - start0);
   auto duration1 = duration_cast<nanoseconds> (end1 - start1);
   fprintf(stderr, "\033[032mC-S-C Cost\n%ld (s) : %-9ld (ns)\033[0m\n",
-          duration0.count() / (long) 1e9, duration0.count() % (long) 1e9);
+      duration0.count() / (long) 1e9, duration0.count() % (long) 1e9);
   fprintf(stderr, "\033[032mServer Cost\n%ld (s) : %-9ld (ns)\033[0m\n",
-          duration1.count() / (long) 1e9, duration1.count() % (long) 1e9);
+      duration1.count() / (long) 1e9, duration1.count() % (long) 1e9);
 
   /* free memory space in reply queue */
   reply_header = (struct reply_packet_header *)
@@ -216,3 +204,46 @@ blocking_waiting_for_reply:
 
 }
 
+void soccs_sce_lapack_degsvd (
+    char *jobu, char *jobvt,
+    lapack_int *m, lapack_int *n,
+    double *a, lapack_int *lda, double *s, double *u,
+    lapack_int *ldu, double *vt, lapack_int *ldvt,
+    double *work, double *lwork,
+    lapack_int *info) {
+
+  /* client soccs_sce_dppsv */
+  fprintf(stderr, "\033[31mcalling soccs_sce_lapack_dppsv\033[0m\n");
+
+  uint32_t client_pthread_id = pthread_t_to_uint32_t(pthread_self());
+  static uint64_t soccs_sce_dppsv_transaction_id = 0;
+  uint64_t transaction_id = soccs_sce_dppsv_transaction_id++;
+
+  if (fd_shm == -1) {
+    if((fd_shm = shm_open(SHARED_MEM_NAME_LAPACK_DPPSV, O_RDWR, 0666)) == -1)
+      throw "shm_open failed.\n";
+    struct stat tmp;
+    if (fstat(fd_shm, &tmp) == -1)
+      throw "fstat failed.\n";
+    if (tmp.st_size != SHARED_MEM_SIZE)
+      throw "shm size != SHARED_MEM_SIZE\n";
+    if ((p_shm = mmap(NULL, SHARED_MEM_SIZE, PROT_READ | PROT_WRITE, 
+            MAP_SHARED, fd_shm, 0)) == MAP_FAILED)
+      throw "mmap failed.\n";
+    request_queue = (struct circular_queue *) p_shm;
+    reply_queue = request_queue + 1;
+  }
+
+#ifdef DEBUGGING
+  fprintf(stderr, "Shared memory '%s'of %u bytes found and mmaped "
+      "at virtual address %p.\n",
+      SHARED_MEM_NAME_LAPACK_DPPSV, SHARED_MEM_SIZE, p_shm);
+  fprintf(stderr, "c2s_queue of %lu bytes found at virtual address %p.\n",
+      sizeof(struct circular_queue), request_queue);
+  fprintf(stderr, "s2c_queue of %lu bytes found at virtual address %p.\n",
+      sizeof(struct circular_queue), reply_queue);
+#endif
+
+  
+
+}

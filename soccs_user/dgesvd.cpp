@@ -14,7 +14,7 @@ int layout;
 lapack_int n, nrhs, ldb;
 char uplo;
 
-void user_call_dgesvd() { 
+void user_call_dppsv() { 
   char sd[32];
   int k = 0;
   for(int i = 0; i < n; i++) {

@@ -37,13 +37,16 @@ all: $(SOCCS) $(REFER)
 
 .PRECIOUS: %.o
 
-.PHONY: clean test_dppsv
+.PHONY: clean test_dppsv loop_dppsv
 clean:
 	$(RM) *_soccs *_refer *.o *.rs
 
 test_dppsv:
-	make -B -s
+	$(MAKE) -B -s
 	@			./dppsv_refer ap_200x200.data bx_200x200.data > dppsv_refer.rs \
 		&& 	./dppsv_soccs ap_200x200.data bx_200x200.data > dppsv_soccs.rs \
 		&& 	diff dppsv_refer.rs dppsv_soccs.rs
+
+loop_dppsv:
+	$(MAKE) -B CFLAGS+=-DLOOP
 

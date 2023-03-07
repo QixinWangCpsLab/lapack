@@ -50,7 +50,6 @@ void calc_timespec_sum(
   }
 }
 
-
 void calc_timespec_sum (
     const struct timespec *p_a, 
     struct timespec *p_result) {
