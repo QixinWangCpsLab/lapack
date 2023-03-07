@@ -2,7 +2,7 @@ LAPACK_HOME := ..
 
 CC := g++
 
-RM := rm -f
+RM := rm -rf
 
 CFLAGS := -O3 -g -ggdb -std=c++11 -Wall \
 																	-Wno-unused-result
@@ -24,9 +24,9 @@ SOCCS := $(SOURCES:%.cpp=%_soccs)
 
 REFER := $(SOURCES:%.cpp=%_refer)
 
-all: $(SOCCS) $(REFER)
+all: $(SOCCS) $(REFER) 
 
-%_soccs: %.o
+%_soccs: %.o $(LAPACK_HOME)/libs/libsoccs_sce_lapack.a
 	$(CC) $^ $(CFLAGS) -o $@ $(LIB_DIR) $(LDFLAGS) $(LDSOCCS)
 
 %_refer: %.o
@@ -39,14 +39,23 @@ all: $(SOCCS) $(REFER)
 
 .PHONY: clean test_dppsv loop_dppsv
 clean:
-	$(RM) *_soccs *_refer *.o *.rs
+	$(RM) *_soccs *_refer *.o *.rs results/
 
 test_dppsv:
-	$(MAKE) -B -s
-	@			./dppsv_refer ap_200x200.data bx_200x200.data > dppsv_refer.rs \
-		&& 	./dppsv_soccs ap_200x200.data bx_200x200.data > dppsv_soccs.rs \
-		&& 	diff dppsv_refer.rs dppsv_soccs.rs
+	@if [ ! -d "results" ]; then mkdir results; fi
+	$(MAKE) -B -s CFLAGS+=-DVERIFY
+	@			./dppsv_refer data/dppsv_ap_200x200.data data/dppsv_bx_200x200.data \
+											> results/refer_dppsv.rs \
+		&& 	./dppsv_soccs data/dppsv_ap_200x200.data data/dppsv_bx_200x200.data \
+											> results/soccs_dppsv.rs \
+		&& 	diff results/refer_dppsv.rs results/soccs_dppsv.rs
 
 loop_dppsv:
 	$(MAKE) -B CFLAGS+=-DLOOP
+
+test_dgesvd:
+	# TODO
+
+loop_dgesvd:
+	# TODO
 

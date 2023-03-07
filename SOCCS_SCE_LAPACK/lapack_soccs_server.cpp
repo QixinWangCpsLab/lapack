@@ -1,21 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <signal.h>
-#include <errno.h>
-#include <execinfo.h>
-#include <pthread.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <sys/prctl.h>
-#include <chrono>
-#include <time.h>
-#include <thread>
-
 #include "soccs_sce_client_server_circular_queue.h"
 #include "soccs_sce_client_server_protocol.h"
 #include "soccs_sce_tools.h"
@@ -105,27 +87,28 @@ static void *server_soccs(void *p_arg)
           {
 
 #ifdef DEBUGGING
-            fprintf(stderr, "received packet from client %u\n",
+            fprintf(stderr, "received LAPACK_DPPSV from client %u\n",
                 request_header->client_pthread_id);
 #endif
             struct request_lapack_dppsv_fixed *req_pkt_fixed =
               reinterpret_cast<struct request_lapack_dppsv_fixed *>
               (request_header + 1);
-            const char uplo = req_pkt_fixed->uplo;
-            const lapack_int n = req_pkt_fixed->n;
-            const lapack_int nrhs = req_pkt_fixed->nrhs;
-            const lapack_int ldb = req_pkt_fixed->ldb;
+            const char uplo         = req_pkt_fixed->uplo;
+            const lapack_int n      = req_pkt_fixed->n;
+            const lapack_int nrhs   = req_pkt_fixed->nrhs;
+            const lapack_int ldb    = req_pkt_fixed->ldb;
             const lapack_int len_AP = n * (n + 1) / 2;
-            const lapack_int len_B = ldb * nrhs;
+            const lapack_int len_B  = ldb * nrhs;
             lapack_int info = 0;
             double *ap = (double *) malloc (len_AP * sizeof(double));
             double *b = (double *) malloc (len_B * sizeof(double));
             double *req_pkt_flexible =
               reinterpret_cast<double *>(req_pkt_fixed + 1);
-            for (int i = 0; i < len_AP; i++)
-              ap[i] = req_pkt_flexible[i];
-            for (int i = 0; i < len_B; i++)
-              b[i] = req_pkt_flexible[len_AP + i];
+            double *req_pkt_flexible_pos = req_pkt_flexible;
+
+            memcpy(ap, req_pkt_flexible_pos, len_AP * sizeof(double));
+            req_pkt_flexible_pos += len_AP;
+            memcpy(b, req_pkt_flexible_pos, len_B * sizeof(double));
 
 #ifdef DEBUGGING
             fprintf(stderr, "ap[%d]={", len_AP);
@@ -148,7 +131,7 @@ static void *server_soccs(void *p_arg)
             else if (ldb < max(1, n))
               info = -6;
             if (info != 0)
-              goto reply; // no need to calculate
+              goto reply_dppsv; // no need to calculate
 
             /* calculation starts from here */
             // start            /* 190: dpptrf( uplo, n, ap) */
@@ -197,14 +180,14 @@ static void *server_soccs(void *p_arg)
             end = system_clock::now();
             duration = duration_cast<nanoseconds> (end - start);
 
-#ifdef TESTING
+#ifdef TIMER
             fprintf(stderr, "\033[032mTotal Cost\n%ld (s) : %-9ld (ns)\033[0m\n",
                 duration.count() / (long) 1e9, duration.count() % (long) 1e9);
 #endif
 
             // finish            // end of dpptrs()--------------------------------------
 
-reply:
+reply_dppsv:
             /* prepare reply packets */
 #ifdef DEBUGGING
             fprintf(stderr, "server: ready to reply\n");
@@ -263,10 +246,11 @@ reply:
             /* load flexible part -> reply queue */
             double *rpl_pkt_flexible =
               reinterpret_cast<double *>(rpl_pkt_fixed + 1);
-            for (int i = 0; i < len_AP; i++)
-              rpl_pkt_flexible[i] = ap[i];
-            for (int i = 0; i < len_B; i++)
-              rpl_pkt_flexible[len_AP + i] = b[i];
+            double *rpl_pkt_flexible_pos = rpl_pkt_flexible;
+
+            memcpy(rpl_pkt_flexible_pos, ap, len_AP * sizeof(double));
+            rpl_pkt_flexible_pos += len_AP;
+            memcpy(rpl_pkt_flexible_pos, b, len_B * sizeof(double));
 
             /* broadcast to clients and release lock */
             pthread_cond_broadcast(&(reply_queue->meta_info.can_consume));
@@ -278,10 +262,171 @@ reply:
 #ifdef DEBUGGING
             fprintf(stderr, "finish 1 DPPSV.\n");
 #endif
-
+            /* free resources */
             free(ap);
             free(b);
+            break;
+          }
 
+        case LAPACK_DGESVD:
+          {
+
+#ifdef DEBUGGING
+            fprintf(stderr, "received LAPACK_DGESVD from client %u\n",
+                request_header->client_pthread_id);
+#endif
+            struct request_lapack_dgesvd_fixed *req_pkt_fixed =
+              reinterpret_cast<struct request_lapack_dgesvd_fixed *>
+              (request_header + 1);
+            const char jobu       = req_pkt_fixed->jobu;
+            const char jobvt      = req_pkt_fixed->jobvt;
+            const lapack_int m    = req_pkt_fixed->m;
+            const lapack_int n    = req_pkt_fixed->n;
+            const lapack_int lda  = req_pkt_fixed->lda;
+            const lapack_int ldu  = req_pkt_fixed->ldu;
+            const lapack_int ldvt = req_pkt_fixed->ldvt;
+            const lapack_int lwork= req_pkt_fixed->lwork;
+            const lapack_int len_A  = lda * n;
+            const lapack_int len_S  = m <= n ? m : n;
+            const lapack_int len_U  = m * m;
+            const lapack_int len_VT = n * n;
+            const lapack_int len_W  = lwork >= 1 ? lwork : 1;
+            lapack_int info = 0;
+            double *a     = (double *) malloc (len_A * sizeof(double));
+            double *s     = (double *) malloc (len_S * sizeof(double));
+            double *u     = (double *) malloc (len_U * sizeof(double));
+            double *vt    = (double *) malloc (len_VT * sizeof(double));
+            double *work  = (double *) malloc (len_W * sizeof(double));
+
+            double *req_pkt_flexible =
+              reinterpret_cast<double *>(req_pkt_fixed + 1);
+
+            memcpy(a, req_pkt_flexible, len_A * sizeof(double));
+
+#ifdef DEBUGGING
+            fprintf(stderr, "a[%d]={", len_A);
+            for (int i = 0; i < len_A; i++)
+              fprintf(stderr, " %lf", a[i]);
+            fprintf(stderr, " }\n");
+            fprintf(stderr, "s[%d]={", len_S);
+            for (int i = 0; i < len_S; i++)
+              fprintf(stderr, " %lf", s[i]);
+            fprintf(stderr, " }\n");
+            fprintf(stderr, "u[%d]={", len_U);
+            for (int i = 0; i < len_U; i++)
+              fprintf(stderr, " %lf", u[i]);
+            fprintf(stderr, " }\n");
+            fprintf(stderr, "vt[%d]={", len_VT);
+            for (int i = 0; i < len_VT; i++)
+              fprintf(stderr, " %lf", vt[i]);
+            fprintf(stderr, " }\n");
+            fprintf(stderr, "work[%d]={", len_W);
+            for (int i = 0; i < len_W; i++)
+              fprintf(stderr, " %lf", work[i]);
+            fprintf(stderr, " }\n");
+#endif
+
+            /* calculation starts from here */
+            start = system_clock::now();
+            //TODO calculation
+
+            end = system_clock::now();
+            duration = duration_cast<nanoseconds> (end - start);
+
+#ifdef TIMER
+            fprintf(stderr, "\033[032mTotal Cost\n%ld (s) : %-9ld (ns)\033[0m\n",
+                duration.count() / (long) 1e9, duration.count() % (long) 1e9);
+#endif
+
+            // finish            // end of dpptrs()--------------------------------------
+
+reply_dgesvd:
+            /* prepare reply packets */
+#ifdef DEBUGGING
+            fprintf(stderr, "server: ready to reply\n");
+#endif
+            int rpl_packet_payload_size = sizeof(reply_lapack_dppsv_fixed) +
+              (len_A + len_S + len_U + len_VT + len_W) * sizeof(double);
+            int rpl_packet_total_size = sizeof(struct reply_packet_header) +
+              rpl_packet_payload_size;
+
+            pthread_mutex_lock(&(reply_queue->meta_info.mutex));
+            while (!can_malloc_straight(reply_queue, rpl_packet_total_size))
+            {
+              /* wait until there is space in reply queue or timeout */
+              struct timespec abs_timeout = {
+                .tv_sec = 0, .tv_nsec = 0};
+              if (clock_gettime(CLOCK_REALTIME, &abs_timeout) < 0)
+                throw "clock_gettime failed.\n";
+              calc_timespec_sum(&wait_timeout, &abs_timeout);
+              pthread_cond_timedwait(&(reply_queue->meta_info.can_produce),
+                  &(reply_queue->meta_info.mutex), &abs_timeout);
+              if (terminated == true)
+                break;
+            }
+
+            if (terminated == true)
+            {
+              pthread_mutex_unlock(&(reply_queue->meta_info.mutex));
+              pthread_mutex_unlock(&(request_queue->meta_info.mutex));
+              break; // break switch
+            }
+
+#ifdef DEBUGGING
+            fprintf(stderr, "server: can enqueue now.\n");
+#endif
+
+            uint8_t *raw_reply_packet =
+              malloc_straight(reply_queue, rpl_packet_total_size);
+            if (raw_reply_packet == nullptr)
+              throw "raw_reply_packet == nullptr";
+
+            /* load packet header -> reply queue */
+            struct reply_packet_header *reply_header =
+              (struct reply_packet_header *)raw_reply_packet;
+            reply_header->common_header.preamble = (uint32_t)(PREAMBLE);
+            reply_header->common_header.packet_size = rpl_packet_total_size;
+            reply_header->client_pthread_id = request_header->client_pthread_id;
+            reply_header->transaction_id = request_header->transaction_id;
+            reply_header->function_id = request_header->function_id;
+            reply_header->payload_len = rpl_packet_payload_size;
+
+            /* load fixed part -> reply queue */
+            struct reply_lapack_dppsv_fixed *rpl_pkt_fixed =
+              reinterpret_cast<reply_lapack_dppsv_fixed *>(reply_header + 1);
+            rpl_pkt_fixed->info = info;
+
+            /* load flexible part -> reply queue */
+            double *rpl_pkt_flexible =
+              reinterpret_cast<double *>(rpl_pkt_fixed + 1);
+            double *rpl_pkt_flexible_pos = rpl_pkt_flexible;
+
+            memcpy(rpl_pkt_flexible_pos, a, len_A * sizeof(double));
+            rpl_pkt_flexible_pos += len_A;
+            memcpy(rpl_pkt_flexible_pos, s, len_S * sizeof(double));
+            rpl_pkt_flexible_pos += len_S;
+            memcpy(rpl_pkt_flexible_pos, u, len_U * sizeof(double));
+            rpl_pkt_flexible_pos += len_U;
+            memcpy(rpl_pkt_flexible_pos, vt, len_VT * sizeof(double));
+            rpl_pkt_flexible_pos += len_VT;
+            memcpy(rpl_pkt_flexible_pos, work, len_W * sizeof(double));
+
+            /* broadcast to clients and release lock */
+            pthread_cond_broadcast(&(reply_queue->meta_info.can_consume));
+            pthread_mutex_unlock(&(reply_queue->meta_info.mutex));
+
+            pthread_cond_broadcast(&(request_queue->meta_info.can_produce));
+            pthread_mutex_unlock(&(request_queue->meta_info.mutex));
+
+#ifdef DEBUGGING
+            fprintf(stderr, "finish 1 DGESVD.\n");
+#endif
+            /* free resources */
+            free(a);
+            free(s);
+            free(u);
+            free(vt);
+            free(work);
             break;
           }
 
@@ -329,7 +474,7 @@ int main(int argc, char *argv[], char *envp[])
     pthread_attr_init(&server_thread_attr);
     pthread_attr_setaffinity_np(&server_thread_attr, cpuset_size, cpuset);
 
-    if ((fd_shm = shm_open(SHARED_MEM_NAME_LAPACK_DPPSV,
+    if ((fd_shm = shm_open(SHARED_MEM_NAME_LAPACK,
             O_RDWR | O_CREAT /*| O_EXCL*/, 0666)) == -1)
       throw "shm_open failed.\n";
     if (ftruncate(fd_shm, SHARED_MEM_SIZE) == -1)
@@ -340,17 +485,19 @@ int main(int argc, char *argv[], char *envp[])
 
     request_queue = (struct circular_queue *)p_shm;
     init_circular_queue(request_queue);
-    reply_queue = (struct circular_queue *)(((uint8_t *)p_shm) + sizeof(struct circular_queue));
+    reply_queue = (struct circular_queue *)
+      (((uint8_t *)p_shm) + sizeof(struct circular_queue));
     init_circular_queue(reply_queue);
 
     struct soccs_sce_server_pthread_argument pthread_arg = {
       .p_c2s_queue = request_queue,
-      .p_s2c_queue = reply_queue};
+      .p_s2c_queue = reply_queue
+    };
 
 #ifdef DEBUGGING
     fprintf(stderr, "Shared memory '%s'of %u bytes "
         "created and mmaped at virtual address %p.\n",
-        SHARED_MEM_NAME_LAPACK_DPPSV, SHARED_MEM_SIZE, p_shm);
+        SHARED_MEM_NAME_LAPACK, SHARED_MEM_SIZE, p_shm);
     fprintf(stderr, "c2s_queue of %lu bytes "
         "allocated and initialized at virtual address %p.\n",
         sizeof(struct circular_queue), request_queue);
@@ -367,7 +514,7 @@ int main(int argc, char *argv[], char *envp[])
     pthread_join(server_pthread, NULL);
     munmap(p_shm, SHARED_MEM_SIZE);
     close(fd_shm);
-    shm_unlink(SHARED_MEM_NAME_LAPACK_DPPSV);
+    shm_unlink(SHARED_MEM_NAME_LAPACK);
     fprintf(stderr, "Main server thread: exited.\n");
   }
   catch (const char *msg)
@@ -380,3 +527,4 @@ int main(int argc, char *argv[], char *envp[])
 
   return 0;
 }
+

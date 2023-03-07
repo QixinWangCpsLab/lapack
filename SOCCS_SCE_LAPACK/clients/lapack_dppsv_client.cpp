@@ -39,8 +39,9 @@ void soccs_sce_lapack_dppsv (
   static uint64_t soccs_sce_dppsv_transaction_id = 0;
   uint64_t transaction_id = soccs_sce_dppsv_transaction_id++;
 
+  fprintf(stderr,  "name: %s\n",SHARED_MEM_NAME_LAPACK );
   if (fd_shm == -1) {
-    if((fd_shm = shm_open(SHARED_MEM_NAME_LAPACK_DPPSV, O_RDWR, 0666)) == -1)
+    if((fd_shm = shm_open(SHARED_MEM_NAME_LAPACK, O_RDWR, 0666)) == -1)
       throw "shm_open failed.\n";
     struct stat tmp;
     if (fstat(fd_shm, &tmp) == -1)
@@ -57,15 +58,15 @@ void soccs_sce_lapack_dppsv (
 #ifdef DEBUGGING
   fprintf(stderr, "Shared memory '%s'of %u bytes found and mmaped "
       "at virtual address %p.\n",
-      SHARED_MEM_NAME_LAPACK_DPPSV, SHARED_MEM_SIZE, p_shm);
+      SHARED_MEM_NAME_LAPACK, SHARED_MEM_SIZE, p_shm);
   fprintf(stderr, "c2s_queue of %lu bytes found at virtual address %p.\n",
       sizeof(struct circular_queue), request_queue);
   fprintf(stderr, "s2c_queue of %lu bytes found at virtual address %p.\n",
       sizeof(struct circular_queue), reply_queue);
 #endif
 
-  lapack_int len_AP  = (*n) * ((*n) + 1) / 2;
-  lapack_int len_B   = (*ldb) * (*nrhs);
+  const lapack_int len_AP  = (*n) * ((*n) + 1) / 2;
+  const lapack_int len_B   = (*ldb) * (*nrhs);
 
   int req_packet_payload_size = sizeof(struct request_lapack_dppsv_fixed) + 
     len_AP * sizeof(double) + len_B * sizeof(double);
@@ -87,7 +88,8 @@ void soccs_sce_lapack_dppsv (
 
   auto start0 = system_clock::now();
 
-  uint8_t *raw_request_packet = malloc_straight(request_queue, req_packet_total_size);
+  uint8_t *raw_request_packet = 
+    malloc_straight(request_queue, req_packet_total_size);
   if(raw_request_packet == nullptr)
     throw "raw_request_packet == nullptr\n";
 
@@ -113,13 +115,12 @@ void soccs_sce_lapack_dppsv (
   req_pkt_fixed->ldb  = *ldb;
 
   /* load flexible part -> request_queue */
-  double *req_pkt_flexible = 
-    reinterpret_cast<double *> (req_pkt_fixed + 1);
+  double *req_pkt_flexible = reinterpret_cast<double *> (req_pkt_fixed + 1);
+  double *req_pkt_flexible_pos = req_pkt_flexible;
 
-  for (int i = 0; i < len_AP; i++)
-    req_pkt_flexible[i] = ap[i];
-  for (int i = 0; i < len_B; i++)
-    req_pkt_flexible[len_AP + i] = b[i];
+  memcpy(req_pkt_flexible_pos, ap, len_AP * sizeof(double));
+  req_pkt_flexible_pos += len_AP;
+  memcpy(req_pkt_flexible_pos, b, len_B * sizeof(double));
 
   /* broadcast to servers and release lock */
   pthread_cond_broadcast(&(request_queue->meta_info.can_consume));
@@ -172,16 +173,16 @@ blocking_waiting_for_reply:
   /* get fixed part <- reply queue */
   struct reply_lapack_dppsv_fixed *rpl_pkt_fixed = 
     reinterpret_cast<struct reply_lapack_dppsv_fixed *> (reply_header + 1);
-  lapack_int r_info = rpl_pkt_fixed->info;
+  *info = rpl_pkt_fixed->info;
 
   /* get flexible part <- reply queue */
   double *rpl_pkt_flexible =
     reinterpret_cast<double *> (rpl_pkt_fixed + 1);
-
-  for (int i = 0; i < len_AP; i++)
-    ap[i] = rpl_pkt_flexible[i];
-  for (int i = 0; i < len_B; i++)
-    b[i] = rpl_pkt_flexible[len_AP + i];
+  double *rpl_pkt_flexible_pos = rpl_pkt_flexible;
+  
+  memcpy(ap, rpl_pkt_flexible_pos, len_AP * sizeof(double));
+  rpl_pkt_flexible_pos += len_AP;
+  memcpy(b, rpl_pkt_flexible_pos, len_B * sizeof(double));
 
   auto end0 = system_clock::now();
   auto duration0 = duration_cast<nanoseconds> (end0 - start0);
@@ -204,46 +205,3 @@ blocking_waiting_for_reply:
 
 }
 
-void soccs_sce_lapack_degsvd (
-    char *jobu, char *jobvt,
-    lapack_int *m, lapack_int *n,
-    double *a, lapack_int *lda, double *s, double *u,
-    lapack_int *ldu, double *vt, lapack_int *ldvt,
-    double *work, double *lwork,
-    lapack_int *info) {
-
-  /* client soccs_sce_dppsv */
-  fprintf(stderr, "\033[31mcalling soccs_sce_lapack_dppsv\033[0m\n");
-
-  uint32_t client_pthread_id = pthread_t_to_uint32_t(pthread_self());
-  static uint64_t soccs_sce_dppsv_transaction_id = 0;
-  uint64_t transaction_id = soccs_sce_dppsv_transaction_id++;
-
-  if (fd_shm == -1) {
-    if((fd_shm = shm_open(SHARED_MEM_NAME_LAPACK_DPPSV, O_RDWR, 0666)) == -1)
-      throw "shm_open failed.\n";
-    struct stat tmp;
-    if (fstat(fd_shm, &tmp) == -1)
-      throw "fstat failed.\n";
-    if (tmp.st_size != SHARED_MEM_SIZE)
-      throw "shm size != SHARED_MEM_SIZE\n";
-    if ((p_shm = mmap(NULL, SHARED_MEM_SIZE, PROT_READ | PROT_WRITE, 
-            MAP_SHARED, fd_shm, 0)) == MAP_FAILED)
-      throw "mmap failed.\n";
-    request_queue = (struct circular_queue *) p_shm;
-    reply_queue = request_queue + 1;
-  }
-
-#ifdef DEBUGGING
-  fprintf(stderr, "Shared memory '%s'of %u bytes found and mmaped "
-      "at virtual address %p.\n",
-      SHARED_MEM_NAME_LAPACK_DPPSV, SHARED_MEM_SIZE, p_shm);
-  fprintf(stderr, "c2s_queue of %lu bytes found at virtual address %p.\n",
-      sizeof(struct circular_queue), request_queue);
-  fprintf(stderr, "s2c_queue of %lu bytes found at virtual address %p.\n",
-      sizeof(struct circular_queue), reply_queue);
-#endif
-
-  
-
-}

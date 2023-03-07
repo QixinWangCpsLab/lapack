@@ -32,8 +32,7 @@ SERVER_OBJS += 	$(SERVER_SRC:%.cpp=%.o) \
 # PACK CLIENTS -> libsoccs_sce_lapack.a
 
 all: server_soccs libsoccs_sce_lapack.a
-	@$(RM) 	/dev/shm/shm_SoCCS_SCE_LAPACK_DPPSV \
-					/dev/shm/shm_SoCCS_SCE_LAPACK_DGESVD
+	@$(RM) /dev/shm/shm_SoCCS_SCE_LAPACK
 
 server_soccs: $(SERVER_OBJS)
 	$(CC) $^ $(CFLAGS) -o $@ $(HD_DIR) $(LDFLAGS)
@@ -49,9 +48,8 @@ libsoccs_sce_lapack.a: $(CLIENT_OBJS)
 clean:
 	$(RM) $(CLIENT_OBJS) $(SERVER_OBJS) server_soccs *.a
 	@$(RM) perf.data perf.data.old \
-				/dev/shm/shm_SoCCS_SCE_LAPACK_DPPSV \
-				/dev/shm/shm_SoCCS_SCE_LAPACK_DGESVD
+				/dev/shm/shm_SoCCS_SCE_LAPACK
 
 debugging:
-	$(MAKE) -B DFLAG=-DDEBUGGING all
+	$(MAKE) -B DFLAG+=-DDEBUGGING all
 

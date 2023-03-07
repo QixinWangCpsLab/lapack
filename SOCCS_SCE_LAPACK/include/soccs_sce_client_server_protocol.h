@@ -92,8 +92,7 @@ struct reply_lapack_dgesvd_fixed {
   lapack_int info;
 } __attribute__((packed));
 
-#define SHARED_MEM_NAME_LAPACK_DPPSV "/shm_SoCCS_SCE_LAPACK_DPPSV"
-#define SHARED_MEM_NAME_LAPACK_DGESVD "/dhm_SoCCS_SCE_LAPACK_DGESVD"
+#define SHARED_MEM_NAME_LAPACK "/shm_SoCCS_SCE_LAPACK"
 
 #endif
 
