@@ -63,10 +63,6 @@ static void *server_soccs(void *p_arg)
         pthread_cond_timedwait(&request_queue->meta_info.can_consume,
             &(request_queue->meta_info.mutex), &abs_timeout);
 
-#ifdef DEBUGGING
-    fprintf(stderr, "server: ready to consume request queue.\n");
-#endif
-
         if (terminated == true)
           break;
       }
@@ -223,10 +219,6 @@ reply_dppsv:
               calc_timespec_sum(&wait_timeout, &abs_timeout);
               pthread_cond_timedwait(&(reply_queue->meta_info.can_produce),
                   &(reply_queue->meta_info.mutex), &abs_timeout);
-
-#ifdef DEBUGGING
-  fprintf(stderr, "server: can produce reply queue.\n");
-#endif
 
               if (terminated == true)
                 break;

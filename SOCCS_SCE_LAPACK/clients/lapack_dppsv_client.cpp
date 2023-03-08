@@ -114,6 +114,7 @@ void soccs_sce_lapack_dppsv (
   req_pkt_flexible_pos += len_AP;
   memcpy(req_pkt_flexible_pos, b, len_B * sizeof(double));
 
+fprintf(stderr, "client: ready to broadcast.\n");
   /* broadcast to servers and release lock */
   pthread_cond_broadcast(&(request_queue->meta_info.can_consume));
 
