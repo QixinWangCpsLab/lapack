@@ -47,6 +47,11 @@ static void *server_soccs(void *p_arg)
 
       /* acquire request queue lock */
       pthread_mutex_lock(&request_queue->meta_info.mutex);
+
+#ifdef DEBUGGING
+      fprintf(stderr, "server: acquire request queue.\n");
+#endif
+
       while (!can_shallow_dequeue_straight(request_queue))
       {
         /* wait until any request packets or timeout */
@@ -57,6 +62,11 @@ static void *server_soccs(void *p_arg)
         calc_timespec_sum(&wait_timeout, &abs_timeout);
         pthread_cond_timedwait(&request_queue->meta_info.can_consume,
             &(request_queue->meta_info.mutex), &abs_timeout);
+
+#ifdef DEBUGGING
+    fprintf(stderr, "server: ready to consume request queue.\n");
+#endif
+
         if (terminated == true)
           break;
       }
@@ -109,18 +119,18 @@ static void *server_soccs(void *p_arg)
             memcpy(ap, req_pkt_flexible_pos, len_AP * sizeof(double));
             req_pkt_flexible_pos += len_AP;
             memcpy(b, req_pkt_flexible_pos, len_B * sizeof(double));
-
+            /*
 #ifdef DEBUGGING
-            fprintf(stderr, "ap[%d]={", len_AP);
-            for (int i = 0; i < len_AP; i++)
-              fprintf(stderr, " %lf", ap[i]);
-            fprintf(stderr, " }\n");
-            fprintf(stderr, "b[%d]={", len_B);
-            for (int i = 0; i < len_B; i++)
-              fprintf(stderr, " %lf", b[i]);
-            fprintf(stderr, " }\n");
+fprintf(stderr, "ap[%d]={", len_AP);
+for (int i = 0; i < len_AP; i++)
+fprintf(stderr, " %lf", ap[i]);
+fprintf(stderr, " }\n");
+fprintf(stderr, "b[%d]={", len_B);
+for (int i = 0; i < len_B; i++)
+fprintf(stderr, " %lf", b[i]);
+fprintf(stderr, " }\n");
 #endif
-
+             */
             /* sanity checking */
             if (uplo != 'U' && uplo != 'u' && uplo != 'L' && uplo != 'l')
               info = -1;
@@ -198,6 +208,11 @@ reply_dppsv:
               rpl_packet_payload_size;
 
             pthread_mutex_lock(&(reply_queue->meta_info.mutex));
+
+#ifdef DEBUGGING
+      fprintf(stderr, "server: acquire reply queue.\n");
+#endif
+
             while (!can_malloc_straight(reply_queue, rpl_packet_total_size))
             {
               /* wait until there is space in reply queue or timeout */
@@ -208,6 +223,11 @@ reply_dppsv:
               calc_timespec_sum(&wait_timeout, &abs_timeout);
               pthread_cond_timedwait(&(reply_queue->meta_info.can_produce),
                   &(reply_queue->meta_info.mutex), &abs_timeout);
+
+#ifdef DEBUGGING
+  fprintf(stderr, "server: can produce reply queue.\n");
+#endif
+
               if (terminated == true)
                 break;
             }
@@ -278,14 +298,14 @@ reply_dppsv:
             struct request_lapack_dgesvd_fixed *req_pkt_fixed =
               reinterpret_cast<struct request_lapack_dgesvd_fixed *>
               (request_header + 1);
-            const char jobu       = req_pkt_fixed->jobu;
-            const char jobvt      = req_pkt_fixed->jobvt;
-            const lapack_int m    = req_pkt_fixed->m;
-            const lapack_int n    = req_pkt_fixed->n;
-            const lapack_int lda  = req_pkt_fixed->lda;
-            const lapack_int ldu  = req_pkt_fixed->ldu;
-            const lapack_int ldvt = req_pkt_fixed->ldvt;
-            const lapack_int lwork= req_pkt_fixed->lwork;
+            const char jobu         = req_pkt_fixed->jobu;
+            const char jobvt        = req_pkt_fixed->jobvt;
+            const lapack_int m      = req_pkt_fixed->m;
+            const lapack_int n      = req_pkt_fixed->n;
+            const lapack_int lda    = req_pkt_fixed->lda;
+            const lapack_int ldu    = req_pkt_fixed->ldu;
+            const lapack_int ldvt   = req_pkt_fixed->ldvt;
+            const lapack_int lwork  = req_pkt_fixed->lwork;
             const lapack_int len_A  = lda * n;
             const lapack_int len_S  = m <= n ? m : n;
             const lapack_int len_U  = m * m;

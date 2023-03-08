@@ -8,3 +8,7 @@ ref_main
 
 *.rs
 
+*_refer
+
+*_soccs
+

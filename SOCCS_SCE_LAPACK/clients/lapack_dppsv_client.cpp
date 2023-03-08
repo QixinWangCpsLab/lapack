@@ -8,14 +8,6 @@ extern "C" {
         char *uplo, lapack_int *n, lapack_int *nrhs,
         double *ap, double *b, lapack_int *ldb,
         lapack_int *info);
-  void
-    soccs_sce_lapack_dgesvd (
-        char *jobu, char *jobvt,
-        lapack_int *m, lapack_int *n,
-        double *a, lapack_int *lda, double *s, double *u,
-        lapack_int *ldu, double *vt, lapack_int *ldvt,
-        double *work, double *lwork,
-        lapack_int *info);
 }
 
 #define NUM_CPUS 8
@@ -124,6 +116,11 @@ void soccs_sce_lapack_dppsv (
 
   /* broadcast to servers and release lock */
   pthread_cond_broadcast(&(request_queue->meta_info.can_consume));
+
+#ifdef DEBUGGING
+  fprintf(stderr, "client: broadcast request queue -> can_consume.\n");
+#endif
+
   pthread_mutex_unlock(&request_queue->meta_info.mutex);
 
 #ifdef DEBUGGING
@@ -179,7 +176,7 @@ blocking_waiting_for_reply:
   double *rpl_pkt_flexible =
     reinterpret_cast<double *> (rpl_pkt_fixed + 1);
   double *rpl_pkt_flexible_pos = rpl_pkt_flexible;
-  
+
   memcpy(ap, rpl_pkt_flexible_pos, len_AP * sizeof(double));
   rpl_pkt_flexible_pos += len_AP;
   memcpy(b, rpl_pkt_flexible_pos, len_B * sizeof(double));

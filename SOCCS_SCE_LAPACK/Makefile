@@ -8,7 +8,8 @@ CP := cp
 
 CFLAGS 	:= 	-O3 -g -ggdb -std=c++11 $(DFLAG) -Wall \
 															-Wno-address-of-packed-member \
-															-Wno-unused-variable
+															-Wno-unused-variable \
+															-Wno-unused-label
 
 HD_DIR 	:= 	-I$(LAPACK_HOME)/LAPACKE/include \
 						-I./include
