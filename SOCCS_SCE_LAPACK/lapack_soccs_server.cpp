@@ -25,9 +25,11 @@ static void *server_soccs(void *p_arg)
 {
   prctl(PR_SET_NAME, "soccs_server");
   /* server soccs_sce_lapack_dppsv */
+
   struct sched_param server_pthread_sched_param = {
-    .sched_priority = sched_get_priority_max(SCHED_FIFO)};
-  pthread_setschedparam(pthread_self(), SCHED_FIFO,
+    .sched_priority = sched_get_priority_max(SCHED_RR)
+  };
+  pthread_setschedparam(pthread_self(), SCHED_RR,
       &server_pthread_sched_param);
 
   struct circular_queue *request_queue =
@@ -206,7 +208,7 @@ reply_dppsv:
             pthread_mutex_lock(&(reply_queue->meta_info.mutex));
 
 #ifdef DEBUGGING
-      fprintf(stderr, "server: acquire reply queue.\n");
+            fprintf(stderr, "server: acquire reply queue.\n");
 #endif
 
             while (!can_malloc_straight(reply_queue, rpl_packet_total_size))
@@ -215,7 +217,7 @@ reply_dppsv:
               struct timespec abs_timeout = {
                 .tv_sec = 0, .tv_nsec = 0};
               if (clock_gettime(CLOCK_REALTIME, &abs_timeout) < 0)
-                throw "clock_gettime failed.\n";
+                throw "clock_gettime failed.\;
               calc_timespec_sum(&wait_timeout, &abs_timeout);
               pthread_cond_timedwait(&(reply_queue->meta_info.can_produce),
                   &(reply_queue->meta_info.mutex), &abs_timeout);
@@ -481,13 +483,18 @@ int main(int argc, char *argv[], char *envp[])
     cpu_set_t *cpuset = CPU_ALLOC(num_cpus);
     size_t cpuset_size = CPU_ALLOC_SIZE(num_cpus);
     CPU_ZERO_S(cpuset_size, cpuset);
-    CPU_SET_S(server_core_index, cpuset_size, cpuset);
+    int ci = server_core_index == -1 ? 0 : server_core_index;
+    CPU_SET_S(ci, cpuset_size, cpuset);
     pthread_attr_t server_thread_attr;
     pthread_attr_init(&server_thread_attr);
     pthread_attr_setaffinity_np(&server_thread_attr, cpuset_size, cpuset);
 
-    if ((fd_shm = shm_open(SHARED_MEM_NAME_LAPACK,
-            O_RDWR | O_CREAT /*| O_EXCL*/, 0666)) == -1)
+    char shm_name[32];
+    if(server_core_index == -1)
+      strcpy(shm_name, SHARED_MEM_NAME_LAPACK);
+    else
+      sprintf(shm_name, "%s_%d", SHARED_MEM_NAME_LAPACK, server_core_index);
+    if ((fd_shm = shm_open(shm_name, O_RDWR | O_CREAT, 0666)) == -1)
       throw "shm_open failed.\n";
     if (ftruncate(fd_shm, SHARED_MEM_SIZE) == -1)
       throw "ftrancate failed.\n";

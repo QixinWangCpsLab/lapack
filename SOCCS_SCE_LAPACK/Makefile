@@ -14,9 +14,7 @@ CFLAGS 	:= 	-O3 -g -ggdb -std=c++11 $(DFLAG) -Wall \
 HD_DIR 	:= 	-I$(LAPACK_HOME)/LAPACKE/include \
 						-I./include
 
-LDFLAGS := -pthread -lrt
-
-DFLAG 	:=
+DFLAG 	:= 
 
 COMMON_SRC	:=	$(wildcard ./commons/*.cpp)
 
@@ -33,7 +31,7 @@ SERVER_OBJS += 	$(SERVER_SRC:%.cpp=%.o) \
 # PACK CLIENTS -> libsoccs_sce_lapack.a
 
 all: server_soccs libsoccs_sce_lapack.a
-	@$(RM) /dev/shm/shm_SoCCS_SCE_LAPACK
+	@$(RM) /dev/shm/shm_SoCCS_SCE_LAPACK*
 
 server_soccs: $(SERVER_OBJS)
 	$(CC) $^ $(CFLAGS) -o $@ $(HD_DIR) $(LDFLAGS)
@@ -49,7 +47,7 @@ libsoccs_sce_lapack.a: $(CLIENT_OBJS)
 clean:
 	$(RM) $(CLIENT_OBJS) $(SERVER_OBJS) server_soccs *.a
 	@$(RM) perf.data perf.data.old \
-				/dev/shm/shm_SoCCS_SCE_LAPACK
+				/dev/shm/shm_SoCCS_SCE_LAPACK*
 
 debugging:
 	$(MAKE) -B DFLAG+=-DDEBUGGING all

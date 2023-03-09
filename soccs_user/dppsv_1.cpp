@@ -14,6 +14,8 @@ int layout;
 lapack_int n, nrhs, ldb;
 char uplo;
 
+int ms_index = 1;
+
 void user_call_dppsv() { 
   memcpy(ap_, ap, n * (n + 1) / 2 * sizeof(double));
   memcpy(bx_, bx, nrhs * ldb * sizeof(double));

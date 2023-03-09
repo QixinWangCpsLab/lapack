@@ -19,6 +19,8 @@ static void *p_shm  = nullptr;
 static circular_queue *request_queue  = nullptr;
 static circular_queue *reply_queue    = nullptr;
 
+extern int ms_index;
+
 void soccs_sce_lapack_dppsv (
     char *uplo, lapack_int *n, lapack_int *nrhs,
     double *ap, double *b, lapack_int *ldb,
@@ -31,10 +33,16 @@ void soccs_sce_lapack_dppsv (
   static uint64_t soccs_sce_dppsv_transaction_id = 0;
   uint64_t transaction_id = soccs_sce_dppsv_transaction_id++;
 
-  fprintf(stderr,  "name: %s\n",SHARED_MEM_NAME_LAPACK );
   if (fd_shm == -1) {
-    if((fd_shm = shm_open(SHARED_MEM_NAME_LAPACK, O_RDWR, 0666)) == -1)
+    char shm_name[32];
+    if(ms_index == -1)
+      strcpy(shm_name, SHARED_MEM_NAME_LAPACK);
+    else
+      sprintf(shm_name, "%s_%d", SHARED_MEM_NAME_LAPACK, ms_index);
+    fprintf(stderr, "%s\n", shm_name);
+    if((fd_shm = shm_open(shm_name, O_RDWR, 0666)) == -1)
       throw "shm_open failed.\n";
+
     struct stat tmp;
     if (fstat(fd_shm, &tmp) == -1)
       throw "fstat failed.\n";
@@ -114,7 +122,6 @@ void soccs_sce_lapack_dppsv (
   req_pkt_flexible_pos += len_AP;
   memcpy(req_pkt_flexible_pos, b, len_B * sizeof(double));
 
-fprintf(stderr, "client: ready to broadcast.\n");
   /* broadcast to servers and release lock */
   pthread_cond_broadcast(&(request_queue->meta_info.can_consume));
 

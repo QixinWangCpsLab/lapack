@@ -22,14 +22,14 @@ SOURCES := $(wildcard *.cpp)
 
 SOCCS := $(SOURCES:%.cpp=%_soccs)
 
-REFER := $(SOURCES:%.cpp=%_refer)
+REFER := $(SOURCES:%_0.cpp=%_refer)
 
 all: $(SOCCS) $(REFER) 
 
 %_soccs: %.o $(LAPACK_HOME)/libs/libsoccs_sce_lapack.a
 	$(CC) $^ $(CFLAGS) -o $@ $(LIB_DIR) $(LDFLAGS) $(LDSOCCS)
 
-%_refer: %.o
+%_refer: %_0.o
 	$(CC) $^ $(CFLAGS) -o $@ $(REF_DIR) $(LDFLAGS)
 
 %.o: %.cpp
@@ -37,7 +37,8 @@ all: $(SOCCS) $(REFER)
 
 .PRECIOUS: %.o
 
-.PHONY: clean test_dppsv loop_dppsv
+.PHONY: clean test_dppsv test_dgesvd loop
+
 clean:
 	$(RM) *_soccs *_refer *.o *.rs results/
 
@@ -50,12 +51,9 @@ test_dppsv:
 											> results/soccs_dppsv.rs \
 		&& 	diff results/refer_dppsv.rs results/soccs_dppsv.rs
 
-loop_dppsv:
-	$(MAKE) -B CFLAGS+=-DLOOP
-
 test_dgesvd:
 	# TODO
 
-loop_dgesvd:
-	# TODO
+loop:
+	$(MAKE) -B CFLAGS+=-DLOOP
 
