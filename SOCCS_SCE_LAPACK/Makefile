@@ -14,6 +14,8 @@ CFLAGS 	:= 	-O3 -g -ggdb -std=c++11 $(DFLAG) -Wall \
 HD_DIR 	:= 	-I$(LAPACK_HOME)/LAPACKE/include \
 						-I./include
 
+LDFLAGS	:= -pthread -lrt -lm
+
 DFLAG 	:= 
 
 COMMON_SRC	:=	$(wildcard ./commons/*.cpp)

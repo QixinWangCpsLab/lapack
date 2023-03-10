@@ -217,7 +217,7 @@ reply_dppsv:
               struct timespec abs_timeout = {
                 .tv_sec = 0, .tv_nsec = 0};
               if (clock_gettime(CLOCK_REALTIME, &abs_timeout) < 0)
-                throw "clock_gettime failed.\;
+                throw "clock_gettime failed.\n";
               calc_timespec_sum(&wait_timeout, &abs_timeout);
               pthread_cond_timedwait(&(reply_queue->meta_info.can_produce),
                   &(reply_queue->meta_info.mutex), &abs_timeout);
