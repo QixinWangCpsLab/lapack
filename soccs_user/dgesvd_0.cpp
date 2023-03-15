@@ -36,7 +36,7 @@ void user_call_dgesvd() {
         duration.count() / (long) 1e9, duration.count() % (long) 1e9);
 
     fprintf(stderr, "info=%d\n", info);
-
+#define VERIFY
 #ifdef VERIFY
     /* Print singular values */
     print_matrix( "Singular values", 1, n, s_, 1);
@@ -64,8 +64,8 @@ int main(int argc, char *argv[]) {
   layout  = LAPACK_COL_MAJOR;
   jobu    = 'A';
   jobvt   = 'A';
-  m       = 6;
-  n       = 5;
+  m       = 5;
+  n       = 6;
   lda     = m;
   ldu     = m;
   ldvt    = n;

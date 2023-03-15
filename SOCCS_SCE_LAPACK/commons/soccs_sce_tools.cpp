@@ -61,3 +61,11 @@ void calc_timespec_sum (
   }
 }
 
+double PYTHAG(double a, double b) {
+  double at = fabs(a), bt = fabs(b), ct, result;
+	if (at > bt)       { ct = bt / at; result = at * sqrt(1.0 + ct * ct); }
+	else if (bt > 0.0) { ct = at / bt; result = bt * sqrt(1.0 + ct * ct); }
+	else result = 0.0;
+	return(result);
+}
+
