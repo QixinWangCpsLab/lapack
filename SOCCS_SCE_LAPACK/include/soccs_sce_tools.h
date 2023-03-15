@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <pthread.h>
 #include <time.h>
+#include <math.h>
 
 #define max(a, b) \
   ({ __typeof__ (a) _a = (a); \
@@ -13,6 +14,9 @@
   ({ __typeof__ (a) _a = (a); \
    __typeof__ (b) _b = (b); \
    _a > _b ? _b : _a; })
+   
+#define SIGN(a, b) ((b) >= 0.0 ? \
+   fabs(a): -fabs(a))
 
 #define EPSILON 0.02
 #define ONE_BILLION 1000000000
@@ -49,3 +53,4 @@ inline void copy_timespec(
   des->tv_nsec = src->tv_nsec;
 }
 
+double PYTHAG(double a, double b);
