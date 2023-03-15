@@ -10,9 +10,9 @@ CFLAGS := -O3 -g -ggdb -std=c++11 -Wall \
 HD_DIR := -I$(LAPACK_HOME)/LAPACKE/include
 
 LDFLAGS := 	-llapacke -llapack -lrefblas \
-						-lgfortran -lrt -lm
+						-lgfortran -lm
 
-LDSOCCS :=	-lsoccs_sce_lapack
+LDSOCCS :=	-lsoccs_sce_lapack -lrt
 
 LIB_DIR := 	-L$(LAPACK_HOME)/libs
 
