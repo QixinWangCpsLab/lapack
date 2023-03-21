@@ -1,3 +1,5 @@
+# Additional Flags: DEBUGGING TIMER
+
 LAPACK_HOME := ..
 
 CC := g++

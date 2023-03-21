@@ -57,6 +57,7 @@ lapack_int LAPACKE_dgesvd( int matrix_layout, char jobu, char jobvt,
     /* Query optimal working array(s) size */
     info = LAPACKE_dgesvd_work( matrix_layout, jobu, jobvt, m, n, a, lda, s, u,
                                 ldu, vt, ldvt, &work_query, lwork );
+    return info; // modified by SOCCS
     if( info != 0 ) {
         goto exit_level_0;
     }

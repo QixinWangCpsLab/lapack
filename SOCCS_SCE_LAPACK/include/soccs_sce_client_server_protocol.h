@@ -94,5 +94,7 @@ struct reply_lapack_dgesvd_fixed {
 
 #define SHARED_MEM_NAME_LAPACK "/shm_SoCCS_SCE_LAPACK"
 
+#define NUM_CPUS 8
+
 #endif
 

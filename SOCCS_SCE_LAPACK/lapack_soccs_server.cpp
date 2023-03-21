@@ -295,14 +295,14 @@ reply_dppsv:
             const char jobu         = req_pkt_fixed->jobu;
             const char jobvt        = req_pkt_fixed->jobvt;
             const lapack_int n      = req_pkt_fixed->n;
-            const lapack_int m      = (req_pkt_fixed->m) > n ? (req_pkt_fixed->m): n;
+            const lapack_int m      = (req_pkt_fixed->m) > n ? (req_pkt_fixed->m) : n;
             const lapack_int lda    = m;
             const lapack_int ldu    = m;
             const lapack_int ldvt   = req_pkt_fixed->ldvt;
             const lapack_int lwork  = req_pkt_fixed->lwork;
             const lapack_int len_A  = lda * n;
             const lapack_int len_S  = m <= n ? m : n;
-            const lapack_int len_U  = m * m;
+            const lapack_int len_U  = m * n;
             const lapack_int len_VT = n * n;
             const lapack_int len_W  = lwork >= 1 ? lwork : 1;
             lapack_int info = 0;
@@ -743,9 +743,9 @@ int main(int argc, char *argv[], char *envp[])
 {
 
   /* server */
-  if (argc != 3)
+  if (argc != 2)
   {
-    fprintf(stderr, "Usage: ./server <num_cores> <server_core_index>\n");
+    fprintf(stderr, "Usage: ./server <server_core_index>\n");
     exit(EXIT_FAILURE);
   }
   signal(SIGINT, sigint_handler);
@@ -753,10 +753,9 @@ int main(int argc, char *argv[], char *envp[])
   try
   {
     /* bind cpu core to server thread */
-    int num_cpus = atoi(argv[1]);
-    int server_core_index = atoi(argv[2]);
-    cpu_set_t *cpuset = CPU_ALLOC(num_cpus);
-    size_t cpuset_size = CPU_ALLOC_SIZE(num_cpus);
+    int server_core_index = atoi(argv[1]);
+    cpu_set_t *cpuset = CPU_ALLOC(NUM_CPUS);
+    size_t cpuset_size = CPU_ALLOC_SIZE(NUM_CPUS);
     CPU_ZERO_S(cpuset_size, cpuset);
     int ci = server_core_index == -1 ? 0 : server_core_index;
     CPU_SET_S(ci, cpuset_size, cpuset);

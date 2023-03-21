@@ -20,27 +20,33 @@ REF_DIR :=	-L$(LAPACK_HOME)/ref_libs
 
 SOURCES := $(wildcard *.cpp)
 
-SOCCS := $(SOURCES:%.cpp=%_soccs)
+SOCCS := $(SOURCES:%_user.cpp=%_user_soccs)
 
-REFER := $(SOURCES:%_0.cpp=%_refer)
+REFER := $(SOURCES:%_user.cpp=%_user_refer)
 
-all: $(SOCCS) $(REFER) 
+STARTER := $(SOURCES:%_starter.cpp=%_starter)
+
+all: $(SOCCS) $(REFER) $(STARTER)
 
 %_soccs: %.o $(LAPACK_HOME)/libs/libsoccs_sce_lapack.a
 	$(CC) $^ $(CFLAGS) -o $@ $(LIB_DIR) $(LDFLAGS) $(LDSOCCS)
 
-%_refer: %_0.o
+%_refer: %.o
 	$(CC) $^ $(CFLAGS) -o $@ $(REF_DIR) $(LDFLAGS)
+
+%_starter: %_starter.o
+	$(CC) $^ $(CFLAGS) -o $@
 
 %.o: %.cpp
 	$(CC) $^ -c $(CFLAGS) -o $@ $(HD_DIR)
 
-.PRECIOUS: %.o
+.PRECIOUS: %.o %_starter.o
 
 .PHONY: clean test_dppsv test_dgesvd loop
 
 clean:
-	$(RM) *_soccs *_refer *.o *.rs results/
+	$(RM) *_soccs *_refer *.o *.rs *.txt stat/ results/
+	mkdir stat
 
 test_dppsv:
 	@if [ ! -d "results" ]; then mkdir results; fi

@@ -15,21 +15,26 @@ char jobu, jobvt;
 lapack_int m, n, lda, ldu, ldvt;
 lapack_int len_A, len_S, len_U, len_VT, len_W;
 
+int ms_index = -1;
+char t_file[32];
+
 void print_matrix(const char*, lapack_int, lapack_int, double*, lapack_int);
 
 void user_call_dgesvd() { 
   memcpy(a_, a, len_A * sizeof(double));
-  memcpy(s_, s, len_S * sizeof(double));
-  memcpy(u_, u, len_U * sizeof(double));
-  memcpy(vt_, vt, len_VT * sizeof(double));
-  memcpy(work_, work, len_W * sizeof(double));
+  memset(s_, 0x0, len_S * sizeof(double));
+  memset(u_, 0x0, len_U * sizeof(double));
+  memset(vt_, 0x0, len_VT * sizeof(double));
+  memset(work_, 0x0, len_W * sizeof(double));
 
   try {
     lapack_int info;
 
     auto start = system_clock::now();
+    /* CALL LAPACKE*/
     info = LAPACKE_dgesvd(layout, jobu, jobvt, m, n,
         a_, lda, s_, u_, ldu, vt_, ldvt, work_);
+
     auto end = system_clock::now();
     auto duration = duration_cast<nanoseconds>(end - start);
     fprintf(stderr, "\033[032mTotal Cost\n%ld (s) : %-9ld (ns)\033[0m\n",
@@ -53,27 +58,29 @@ void user_call_dgesvd() {
   }
 }
 
-int main(int argc, char *argv[]) {
-  /* 
-     if(argc != 3) {
-     fprintf(stderr, "Args: [ap_data] [bx_data]\n");
-     exit(EXIT_FAILURE);
-     }
-   */
+int main(int argc, char *argv[]) {  
 
-  layout  = LAPACK_COL_MAJOR;
+  if(argc != 2) {
+    fprintf(stderr, "Args: [ms_index]\n");
+    exit(EXIT_FAILURE);
+  }
+
+  ms_index = atoi(argv[1]);
+  fprintf(stderr, "Using core %d.\n", ms_index);
+
+  layout  = LAPACK_ROW_MAJOR;
   jobu    = 'A';
   jobvt   = 'A';
-  m       = 5;
-  n       = 6;
-  lda     = m;
+  m       = 6;
+  n       = 5;
+  lda     = n;
   ldu     = m;
   ldvt    = n;
-  len_A   = lda * n;
-  len_S   = m <= n ? m : n;
-  len_U   = m * m;
-  len_VT  = n * n;
-  len_W   = m <= n ? m : n;
+  len_A   = lda * m;
+  len_S   = n;
+  len_U   = ldu * m;
+  len_VT  = ldvt * n;
+  len_W   = (m <= n ? m : n) - 1;
 
   a = (double *) malloc (len_A * sizeof(double));
   s = (double *) malloc (len_S * sizeof(double));
@@ -87,34 +94,15 @@ int main(int argc, char *argv[]) {
   work_ = (double *) malloc (len_W * sizeof(double));
 
   double sa[len_A] = {
-    8.79,  6.11, -9.15,  9.57, -3.49,  9.84,
-    9.93,  6.91, -7.93,  1.64,  4.02,  0.15,
-    9.83,  5.04,  4.86,  8.83,  9.80, -8.99,
-    5.45, -0.27,  4.85,  0.74, 10.00, -6.02,
-    3.16,  7.98,  3.01,  5.80,  4.27, -5.31
+    8.79,   9.93,   9.83,   5.45,   3.16,
+    6.11,   6.91,   5.04,  -0.27,   7.98,
+   -9.15,  -7.93,   4.86,   4.85,   3.01,
+    9.57,   1.64,   8.83,   0.74,   5.80,
+   -3.49,   4.02,   9.80,   10.00,  4.27,
+    9.84,   0.15,  -8.99,  -6.02,  -5.31
   };
+
   memcpy(a, sa, len_A * sizeof(double));
-
-  /*
-     ap_data = fopen(argv[1], "r");
-     bx_data = fopen(argv[2], "r");
-
-     char sd[32];
-     int k = 0;
-     for(int i = 0; i < n; i++) 
-     {
-     for(int j = 0; j < n; j++) 
-     {
-     fscanf(ap_data, "%s", sd);
-     if(j >= i) ap[k++] = strtod(sd, nullptr);
-     }
-     }
-
-     for(int i = 0; i < nrhs * ldb; i++) {
-     fscanf(bx_data, "%s", sd);
-     bx[i] = strtod(sd, nullptr);
-     }
-   */
 
 #ifdef LOOP
   while(true)
@@ -125,12 +113,12 @@ int main(int argc, char *argv[]) {
 }
 
 void print_matrix(const char* desc, lapack_int m, lapack_int n,
-    double* mat, lapack_int ld) {
+    double* mat, lapack_int lda) {
   int i, j;
   fprintf(stderr, "\n %s\n", desc );
   for( i = 0; i < m; i++) {
     for( j = 0; j < n; j++) 
-      fprintf(stderr, " %6.2f", mat[i + j * lda]);
+      fprintf(stderr, " %6.2f", mat[i * lda + j]);
     fprintf(stderr, "\n" );
   }
 }

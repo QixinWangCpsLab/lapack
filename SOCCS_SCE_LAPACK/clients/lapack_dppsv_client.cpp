@@ -10,9 +10,6 @@ extern "C" {
         lapack_int *info);
 }
 
-#define NUM_CPUS 8
-#define CLIENT_CORE_INDEX 0
-
 static int fd_shm   = -1;
 static void *p_shm  = nullptr;
 
@@ -39,7 +36,6 @@ void soccs_sce_lapack_dppsv (
       strcpy(shm_name, SHARED_MEM_NAME_LAPACK);
     else
       sprintf(shm_name, "%s_%d", SHARED_MEM_NAME_LAPACK, ms_index);
-    fprintf(stderr, "%s\n", shm_name);
     if((fd_shm = shm_open(shm_name, O_RDWR, 0666)) == -1)
       throw "shm_open failed.\n";
 
@@ -132,7 +128,7 @@ void soccs_sce_lapack_dppsv (
   pthread_mutex_unlock(&request_queue->meta_info.mutex);
 
 #ifdef DEBUGGING
-  fprintf(stderr, "PREAMBLE:%u\npreamble: %u\nsize: %d\n", 
+  fprintf(stderr, "PREAMBLE: %u\npreamble: %u\nsize: %d\n", 
       (uint32_t) PREAMBLE,
       request_header->common_header.preamble,
       request_header->common_header.packet_size);
@@ -192,10 +188,13 @@ blocking_waiting_for_reply:
   auto end0 = system_clock::now();
   auto duration0 = duration_cast<nanoseconds> (end0 - start0);
   auto duration1 = duration_cast<nanoseconds> (end1 - start1);
+
+#ifdef TIMER
   fprintf(stderr, "\033[032mC-S-C Cost\n%ld (s) : %-9ld (ns)\033[0m\n",
       duration0.count() / (long) 1e9, duration0.count() % (long) 1e9);
   fprintf(stderr, "\033[032mServer Cost\n%ld (s) : %-9ld (ns)\033[0m\n",
       duration1.count() / (long) 1e9, duration1.count() % (long) 1e9);
+#endif
 
   /* free memory space in reply queue */
   reply_header = (struct reply_packet_header *)

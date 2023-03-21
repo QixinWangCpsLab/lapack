@@ -13,14 +13,13 @@ extern "C" {
         lapack_int *info);
 }
 
-#define NUM_CPUS 8
-#define CLIENT_CORE_INDEX 0
-
 static int fd_shm   = -1;
 static void *p_shm  = nullptr;
 
 static circular_queue *request_queue  = nullptr;
 static circular_queue *reply_queue    = nullptr;
+
+extern int ms_index;
 
 void soccs_sce_lapack_dgesvd (
     char *jobu, char *jobvt,
@@ -38,8 +37,14 @@ void soccs_sce_lapack_dgesvd (
   uint64_t transaction_id = soccs_sce_dppsv_transaction_id++;
 
   if (fd_shm == -1) {
-    if((fd_shm = shm_open(SHARED_MEM_NAME_LAPACK, O_RDWR, 0666)) == -1)
+    char shm_name[32];
+    if(ms_index == -1)
+      strcpy(shm_name, SHARED_MEM_NAME_LAPACK);
+    else
+      sprintf(shm_name, "%s_%d", SHARED_MEM_NAME_LAPACK, ms_index);
+    if((fd_shm = shm_open(shm_name, O_RDWR, 0666)) == -1)
       throw "shm_open failed.\n";
+
     struct stat tmp;
     if (fstat(fd_shm, &tmp) == -1)
       throw "fstat failed.\n";
@@ -64,7 +69,7 @@ void soccs_sce_lapack_dgesvd (
 
   const lapack_int len_A  = (*lda) * (*n);
   const lapack_int len_S  = (*m) <= (*n) ? (*m) : (*n);
-  const lapack_int len_U  = (*m) * (*m);
+  const lapack_int len_U  = (*m) * (*n);
   const lapack_int len_VT = (*n) * (*n);
   const lapack_int len_W  = (*lwork) >= 1 ? (*lwork) : 1;
 
@@ -128,7 +133,7 @@ void soccs_sce_lapack_dgesvd (
   pthread_mutex_unlock(&request_queue->meta_info.mutex);
 
 #ifdef DEBUGGING
-  fprintf(stderr, "PREAMBLE:%u\npreamble: %u\nsize: %d\n", 
+  fprintf(stderr, "PREAMBLE: %u\npreamble: %u\nsize: %d\n", 
       (uint32_t) PREAMBLE,
       request_header->common_header.preamble,
       request_header->common_header.packet_size);
