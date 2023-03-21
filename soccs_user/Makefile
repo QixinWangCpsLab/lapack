@@ -45,7 +45,7 @@ all: $(SOCCS) $(REFER) $(STARTER)
 .PHONY: clean test_dppsv test_dgesvd loop
 
 clean:
-	$(RM) *_soccs *_refer *.o *.rs *.txt stat/ results/
+	$(RM) *_soccs *_refer *_starter *.o *.rs *.txt stat/ results/
 	mkdir stat
 
 test_dppsv:
