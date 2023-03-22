@@ -302,8 +302,8 @@ reply_dppsv:
             const lapack_int lwork  = req_pkt_fixed->lwork;
             const lapack_int len_A  = lda * n;
             const lapack_int len_S  = m <= n ? m : n;
-            const lapack_int len_U  = m * n;
-            const lapack_int len_VT = n * n;
+            const lapack_int len_U  = m * ldu;
+            const lapack_int len_VT = n * ldvt;
             const lapack_int len_W  = lwork >= 1 ? lwork : 1;
             lapack_int info = 0;
             double *a     = (double *) malloc (len_A * sizeof(double));

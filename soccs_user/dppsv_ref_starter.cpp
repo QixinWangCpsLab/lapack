@@ -12,7 +12,7 @@
 int main(int argc, char *argv[]) {
   
   if(argc < 2) {
-    fprintf(stderr, "Usage: ./dppsv_ref_starter <index_1> <index_2> ...\n");
+    fprintf(stderr, "Usage: %s <index_0> <index_1> ...\n", argv[0]);
     exit(EXIT_FAILURE);
   }
 
