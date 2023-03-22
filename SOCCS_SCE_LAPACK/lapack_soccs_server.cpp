@@ -296,13 +296,13 @@ reply_dppsv:
             const char jobvt        = req_pkt_fixed->jobvt;
             const lapack_int n      = req_pkt_fixed->n;
             const lapack_int m      = (req_pkt_fixed->m) > n ? (req_pkt_fixed->m) : n;
-            const lapack_int lda    = m;
-            const lapack_int ldu    = m;
+            const lapack_int lda    = req_pkt_fixed->lda;
+            const lapack_int ldu    = req_pkt_fixed->ldu;
             const lapack_int ldvt   = req_pkt_fixed->ldvt;
             const lapack_int lwork  = req_pkt_fixed->lwork;
             const lapack_int len_A  = lda * n;
             const lapack_int len_S  = m <= n ? m : n;
-            const lapack_int len_U  = m * n;
+            const lapack_int len_U  = m * m;
             const lapack_int len_VT = n * n;
             const lapack_int len_W  = lwork >= 1 ? lwork : 1;
             lapack_int info = 0;
@@ -611,12 +611,22 @@ fprintf(stderr, "s:\n");
 for (int i = 0; i < len_S; i++)
   fprintf(stderr, "%lf ", s[i]);
 fprintf(stderr, "\nu:\n");
+for (int i = 0; i < m; i++)
+  for (int j = 0; j < n; j++)
+    u[i * ldu + j] = a[i * n + j];
 for (int i = 0; i < len_U; i++)
-  u[i] = a[i], fprintf(stderr, "%lf ", u[i]);
+  fprintf(stderr, "%lf ", u[i]);
 fprintf(stderr, "\nvt:\n");
 for (int i = 0; i < len_VT; i++)
   fprintf(stderr, "%lf ", vt[i]);
 fprintf(stderr, "\n");
+double tmp;
+for (int i = 0; i < n; i++)
+  for (int j = i + 1; j < ldvt; j++) {
+    tmp = vt[i * ldvt + j];
+    vt[i * ldvt + j] = vt[j * ldvt + i];
+    vt[j * ldvt + i] = tmp;
+  }
 
             /* calculation ends here */
             end = system_clock::now();

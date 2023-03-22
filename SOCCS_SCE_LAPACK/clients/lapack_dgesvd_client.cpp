@@ -69,8 +69,8 @@ void soccs_sce_lapack_dgesvd (
 
   const lapack_int len_A  = (*lda) * (*n);
   const lapack_int len_S  = (*m) <= (*n) ? (*m) : (*n);
-  const lapack_int len_U  = (*m) * (*n);
-  const lapack_int len_VT = (*n) * (*n);
+  const lapack_int len_U  = (*m) * (*ldu);
+  const lapack_int len_VT = (*n) * (*ldvt);
   const lapack_int len_W  = (*lwork) >= 1 ? (*lwork) : 1;
 
   int req_packet_payload_size = sizeof(struct request_lapack_dgesvd_fixed) + 
