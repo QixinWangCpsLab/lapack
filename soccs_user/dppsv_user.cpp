@@ -21,7 +21,8 @@ char uplo;
 int cl_index, ms_index = -1;
 char t_file[32];
 
-void user_call_dppsv() { 
+void user_call_dppsv() {
+  /* generate data, call dppsv */ 
   memcpy(ap_, ap, n * (n + 1) / 2 * sizeof(double));
   memcpy(bx_, bx, nrhs * ldb * sizeof(double));
 
