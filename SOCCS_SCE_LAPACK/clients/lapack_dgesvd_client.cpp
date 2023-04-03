@@ -30,7 +30,9 @@ void soccs_sce_lapack_dgesvd (
     lapack_int *info) {
 
   /* client soccs_sce_dgesvd */
+#ifdef DEBUGGING
   fprintf(stderr, "\033[31mcalling soccs_sce_lapack_dgesvd\033[0m\n");
+#endif
 
   uint32_t client_pthread_id = pthread_t_to_uint32_t(pthread_self());
   static uint64_t soccs_sce_dppsv_transaction_id = 0;
@@ -203,6 +205,7 @@ blocking_waiting_for_reply:
   auto end0 = system_clock::now();
   auto duration0 = duration_cast<nanoseconds> (end0 - start0);
   auto duration1 = duration_cast<nanoseconds> (end1 - start1);
+
   fprintf(stderr, "\033[032mC-S-C Cost\n%ld (s) : %-9ld (ns)\033[0m\n",
       duration0.count() / (long) 1e9, duration0.count() % (long) 1e9);
   fprintf(stderr, "\033[032mServer Cost\n%ld (s) : %-9ld (ns)\033[0m\n",

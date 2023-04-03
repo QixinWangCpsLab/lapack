@@ -14,6 +14,7 @@ CFLAGS 	:= 	-O3 -g -ggdb -std=c++11 $(DFLAG) -Wall \
 															-Wno-unused-label
 
 HD_DIR 	:= 	-I$(LAPACK_HOME)/LAPACKE/include \
+						-I$(LAPACK_HOME)/CBLAS/include \
 						-I./include
 
 LDFLAGS	:= -pthread -lrt -lm
@@ -34,10 +35,10 @@ SERVER_OBJS += 	$(SERVER_SRC:%.cpp=%.o) \
 
 # PACK CLIENTS -> libsoccs_sce_lapack.a
 
-all: server_soccs libsoccs_sce_lapack.a
+all: server_soc libsoccs_sce_lapack.a
 	@$(RM) /dev/shm/shm_SoCCS_SCE_LAPACK*
 
-server_soccs: $(SERVER_OBJS)
+server_soc: $(SERVER_OBJS)
 	$(CC) $^ $(CFLAGS) -o $@ $(HD_DIR) $(LDFLAGS)
 
 libsoccs_sce_lapack.a: $(CLIENT_OBJS)
@@ -49,7 +50,7 @@ libsoccs_sce_lapack.a: $(CLIENT_OBJS)
 
 .PHONY: clean debugging
 clean:
-	$(RM) $(CLIENT_OBJS) $(SERVER_OBJS) server_soccs *.a
+	$(RM) $(CLIENT_OBJS) $(SERVER_OBJS) server_soc *.a
 	@$(RM) perf.data perf.data.old \
 				/dev/shm/shm_SoCCS_SCE_LAPACK*
 

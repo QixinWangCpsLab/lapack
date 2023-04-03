@@ -40,6 +40,15 @@ for index in data:
     data[index][pid] = data[index][pid][data[index][pid].size - lt::]
 print(f'\033[31mTruncate to length of {lt}\033[0m')
 
+print('\n\033[31mSample Statistics -------------\033[0m')
+for i in range(n):
+  index = sys.argv[i + 3]
+  for pid in data[index]:
+    dip = data[index][pid]
+    print(f'\n{dip.size} from - pid={pid}')
+    print(f'\033[32m\tAvg: {np.mean(dip):<9.1f}\tStd: {np.std(dip):<9.1f}')
+    print(f'\tMin: {np.min(dip):<9.1f}\tMax: {np.max(dip):<9.1f}\033[0m')
+
 indices = np.arange(0, lt)
 
 plt.figure(figsize=(12, 8))
@@ -47,12 +56,12 @@ plt.title('Time Costs vs Sample')
 plt.ylabel('Cost (ns)')
 plt.xlabel('Sample')
 
-colors = ['blue', 'orange', 'green', 'red', 'purple', 'brown', 'cyan', 'violet']
+colors = ['blue', 'orange', 'green', 'red', 'purple', 'brown', 'cyan', 'violet', 'black', 'magenta']
 ci = 0
 
 for index in data:
   for pid in data[index]:
-    if index == '0':
+    if index == '-1':
       mk, ms, ls, lw = '.', 1, '', 0
     else:
       mk, ms, ls, lw = 'D', 0.5, '-', 0.25

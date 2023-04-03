@@ -3,10 +3,10 @@ if [ -z "$1" ];then
   exit 255
 fi
 
-killall server_soccs
+killall server_soc
 for index in "$@"
 do
    echo "Start server at core $index -"
-   ./server_soccs $index &
+   sudo chrt --rr 1 ./server_soc $index &
 done
 

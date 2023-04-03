@@ -51,9 +51,9 @@ clean:
 test_dppsv:
 	@if [ ! -d "results" ]; then mkdir results; fi
 	$(MAKE) -B -s CFLAGS+=-DVERIFY
-	@			./dppsv_user_refer 0 data/dppsv_ap_200x200.data data/dppsv_bx_200x200.data \
+	@			./dppsv_user_refer 0 0 data/dppsv_ap_200x200.data data/dppsv_bx_200x200.data \
 											> results/refer_dppsv.rs \
-		&& 	./dppsv_user_soccs 0 data/dppsv_ap_200x200.data data/dppsv_bx_200x200.data \
+		&& 	./dppsv_user_soccs 0 0 data/dppsv_ap_200x200.data data/dppsv_bx_200x200.data \
 											> results/soccs_dppsv.rs \
 		&& 	diff results/refer_dppsv.rs results/soccs_dppsv.rs
 

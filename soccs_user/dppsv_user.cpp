@@ -18,7 +18,7 @@ int layout;
 lapack_int n, nrhs, ldb;
 char uplo;
 
-int ms_index = -1;
+int cl_index, ms_index = -1;
 char t_file[32];
 
 void user_call_dppsv() { 
@@ -62,17 +62,18 @@ void user_call_dppsv() {
 int main(int argc, char *argv[]) {
 
   if(argc != 4) {
-    fprintf(stderr, "Args: [ms_index] [ap_data] [bx_data]\n");
+    fprintf(stderr, "Args: [cl_index] [ms_index] [ap_data] [bx_data]\n");
     exit(EXIT_FAILURE);
   }
 
-  ms_index = atoi(argv[1]);
+  cl_index = atoi(argv[1]);
+  ms_index = atoi(argv[2]);
   fprintf(stderr, "Using core %d.\n", ms_index);
 
   cpu_set_t *cpuset = CPU_ALLOC(NUM_CPUS);
   size_t cpuset_size = CPU_ALLOC_SIZE(NUM_CPUS);
   CPU_ZERO_S(cpuset_size, cpuset);
-  CPU_SET_S(ms_index, cpuset_size, cpuset);
+  CPU_SET_S(cl_index, cpuset_size, cpuset);
   sched_setaffinity(getpid(), cpuset_size, cpuset);
 
   layout  =   LAPACK_COL_MAJOR;
@@ -86,8 +87,8 @@ int main(int argc, char *argv[]) {
   ap_ = (double *) malloc (n * (n + 1) / 2 * sizeof(double));
   bx_ = (double *) malloc (nrhs * ldb * sizeof(double));
 
-  ap_data = fopen(argv[2], "r");
-  bx_data = fopen(argv[3], "r");
+  ap_data = fopen(argv[3], "r");
+  bx_data = fopen(argv[4], "r");
   sprintf(t_file, "stat/log_dppsv_%d.txt", ms_index);
   timer_log = fopen(t_file, "w");
   fclose(timer_log);

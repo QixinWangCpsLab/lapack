@@ -117,18 +117,18 @@ static void *server_soccs(void *p_arg)
             memcpy(ap, req_pkt_flexible_pos, len_AP * sizeof(double));
             req_pkt_flexible_pos += len_AP;
             memcpy(b, req_pkt_flexible_pos, len_B * sizeof(double));
-            /*
+
 #ifdef DEBUGGING
-fprintf(stderr, "ap[%d]={", len_AP);
-for (int i = 0; i < len_AP; i++)
-fprintf(stderr, " %lf", ap[i]);
-fprintf(stderr, " }\n");
-fprintf(stderr, "b[%d]={", len_B);
-for (int i = 0; i < len_B; i++)
-fprintf(stderr, " %lf", b[i]);
-fprintf(stderr, " }\n");
+            fprintf(stderr, "ap[%d]={", len_AP);
+            for (int i = 0; i < len_AP; i++)
+              fprintf(stderr, " %lf", ap[i]);
+            fprintf(stderr, " }\n");
+            fprintf(stderr, "b[%d]={", len_B);
+            for (int i = 0; i < len_B; i++)
+              fprintf(stderr, " %lf", b[i]);
+            fprintf(stderr, " }\n");
 #endif
-             */
+
             /* sanity checking */
             if (uplo != 'U' && uplo != 'u' && uplo != 'L' && uplo != 'l')
               info = -1;
@@ -345,288 +345,290 @@ reply_dppsv:
             //TODO calculation
 
             int flag, i, its, j, jj, k, l, nm;
-	          double c, f, h, ss, x, y, z;
-          	double anorm = 0.0, g = 0.0, scale = 0.0;
-           	double *rv1;
+            double c, f, h, ss, x, y, z;
+            double anorm = 0.0, g = 0.0, scale = 0.0;
+            double *rv1;
             rv1 = (double *) malloc ((unsigned int) n  *sizeof(double));
             /* Householder reduction to bidiagonal form */
-	          for (i = 0; i < n; i++)
+            for (i = 0; i < n; i++)
             {
-		        /* left-hand reduction */
-				      l = i + 1;
-				      rv1[i] = scale * g;
-				      g = ss = scale = 0.0;
-				      if (i < m)
+              /* left-hand reduction */
+              l = i + 1;
+              rv1[i] = scale * g;
+              g = ss = scale = 0.0;
+              if (i < m)
               {
-					      for (k = i; k < m; k++)
-						      scale += fabs(a[k * n + i]);
-					      if (scale)
+                for (k = i; k < m; k++)
+                  scale += fabs(a[k * n + i]);
+                if (scale)
                 {
-					      	for (k = i; k < m; k++)
+                  for (k = i; k < m; k++)
                   {
-					      		a[k * n + i] = a[k * n  + i] / scale;
-					      		ss += a[k * n + i] * a[k * n + i];
-					      	}
-					      	f = a[i * n + i];
-					      	g = -SIGN(sqrt(ss), f);
-					      	h = f * g - ss;
-					      	a[i * n + i] = f - g;
+                    a[k * n + i] = a[k * n  + i] / scale;
+                    ss += a[k * n + i] * a[k * n + i];
+                  }
+                  f = a[i * n + i];
+                  g = -SIGN(sqrt(ss), f);
+                  h = f * g - ss;
+                  a[i * n + i] = f - g;
 
                   if (i != n - 1)
                   {
-							      for (j = l; j < n; j++)
+                    for (j = l; j < n; j++)
                     {
-						      		for (ss = 0.0, k = i; k < m; k++)
-						      			ss += a[k * n + i] * a[k * n + j];
-						      		f = ss / h;
-						      		for (k = i; k < m; k++)
-						      			a[k * n + j] += f * a[k * n  + i];
-						      	}						      
+                      for (ss = 0.0, k = i; k < m; k++)
+                        ss += a[k * n + i] * a[k * n + j];
+                      f = ss / h;
+                      for (k = i; k < m; k++)
+                        a[k * n + j] += f * a[k * n  + i];
+                    }						      
                   }
-						      for (k = i; k < m; k++)
-						      	a[k * n + i] = a[k * n + i] * scale;
-					      }
-				      }
-				      s[i] = scale * g;
+                  for (k = i; k < m; k++)
+                    a[k * n + i] = a[k * n + i] * scale;
+                }
+              }
+              s[i] = scale * g;
 
               /* right-hand reduction */
-		          g = ss = scale = 0.0;
-		          if (i < m && i != n - 1)
-		          {
-		          	for (k = l; k < n; k++)
-		          		scale += fabs(a[i * n + k]);
-		          	if (scale)
-		          	{
-		          		for (k = l; k < n; k++)
-		          		{
-		          			a[i * n + k] = a[i * n + k] / scale;
-		          			ss += a[i * n + k] * a[i * n + k];
-		          		}
-		          		f = a[i * n + l];
-		          		g = -SIGN(sqrt(ss), f);
-		          		h = f * g - ss;
-			          	a[i * n + l] = f - g;
-			          	for (k = l; k < n; k++)
-			          		rv1[k] = a[i * n + k] / h;
-			          	if (i != m - 1)
-		          		{
-			          		for (j = l; j < m; j++)
-			          		{
-			          			for (ss = 0.0, k = l; k < n; k++)
-			          				ss += a[j * n + k] * a[i * n + k];
-			          			for (k = l; k < n; k++)
-			          				a[j * n + k] += (ss * rv1[k]);
-			          		}
-		          		}
-	          			for (k = l; k < n; k++)
-		          			a[i * n + k] = a[i * n + k] * scale;
-		          	}
-		          }
-		          anorm = max(anorm, (fabs(s[i]) + fabs(rv1[i]))); 
+              g = ss = scale = 0.0;
+              if (i < m && i != n - 1)
+              {
+                for (k = l; k < n; k++)
+                  scale += fabs(a[i * n + k]);
+                if (scale)
+                {
+                  for (k = l; k < n; k++)
+                  {
+                    a[i * n + k] = a[i * n + k] / scale;
+                    ss += a[i * n + k] * a[i * n + k];
+                  }
+                  f = a[i * n + l];
+                  g = -SIGN(sqrt(ss), f);
+                  h = f * g - ss;
+                  a[i * n + l] = f - g;
+                  for (k = l; k < n; k++)
+                    rv1[k] = a[i * n + k] / h;
+                  if (i != m - 1)
+                  {
+                    for (j = l; j < m; j++)
+                    {
+                      for (ss = 0.0, k = l; k < n; k++)
+                        ss += a[j * n + k] * a[i * n + k];
+                      for (k = l; k < n; k++)
+                        a[j * n + k] += (ss * rv1[k]);
+                    }
+                  }
+                  for (k = l; k < n; k++)
+                    a[i * n + k] = a[i * n + k] * scale;
+                }
+              }
+              anorm = max(anorm, (fabs(s[i]) + fabs(rv1[i]))); 
             }
 
             /* accumulate the right-hand transformation */
-	          for (i = n - 1; i >= 0; i--)
-	          {
-	          	if (i < n - 1)
-	          	{
-		          	if (g)
-		          	{
-		          		for (j = l; j < n; j++)
-		          			vt[j * n + i] = (a[i * n + j] / a[i * n + l]) / g;
-		          		/* double division to avoid underflow */
-		          		for (j = l; j < n; j++)
-		          		{
-		          			for (ss = 0.0, k = l; k < n; k++)
-		          				ss += a[i * n + k] * vt[k * n + j];
-		          			for (k = l; k < n; k++)
-			          			vt[k * n + j] += ss * vt[k * n + i];
-		          		}
-	          		}
-		          	for (j = l; j < n; j++)
-			          	vt[i * n + j] = vt[j * n + i] = 0.0;
-		          }
-		          vt[i * n + i] = 1.0;
-		          g = rv1[i];
-	          	l = i;
-	          }
+            for (i = n - 1; i >= 0; i--)
+            {
+              if (i < n - 1)
+              {
+                if (g)
+                {
+                  for (j = l; j < n; j++)
+                    vt[j * n + i] = (a[i * n + j] / a[i * n + l]) / g;
+                  /* double division to avoid underflow */
+                  for (j = l; j < n; j++)
+                  {
+                    for (ss = 0.0, k = l; k < n; k++)
+                      ss += a[i * n + k] * vt[k * n + j];
+                    for (k = l; k < n; k++)
+                      vt[k * n + j] += ss * vt[k * n + i];
+                  }
+                }
+                for (j = l; j < n; j++)
+                  vt[i * n + j] = vt[j * n + i] = 0.0;
+              }
+              vt[i * n + i] = 1.0;
+              g = rv1[i];
+              l = i;
+            }
 
-	          /* accumulate the left-hand transformation */
-	          for (i = n - 1; i >= 0; i--)
-	          {
-	          	l = i + 1;
-		          g = s[i];
-		          if (i < n - 1)
-		          	for (j = l; j < n; j++)
-		          		a[i * n + j] = 0.0;
-		          if (g)
-		          {
-		          	g = 1.0 / g;
-		          	if (i != n - 1)
-		          	{
-		          		for (j = l; j < n; j++)
-		          		{
-		          			for (ss = 0.0, k = l; k < m; k++)
-		          				ss += a[k * n + i] * a[k * n + j];
-			          		f = (ss / a[i * n + i]) * g;
-			          		for (k = i; k < m; k++)
-		          				a[k * n + j] += f * a[k * n + i];
-		          		}
-	          		}
-	          		for (j = i; j < m; j++)
-		          		a[j * n + i] = a[j * n + i] * g;
-	          	}
-		          else
-	          	{
-	          		for (j = i; j < m; j++)
-		          		a[j * n + i] = 0.0;
-		          }
-		          ++a[i * n + i];
-	          }
+            /* accumulate the left-hand transformation */
+            for (i = n - 1; i >= 0; i--)
+            {
+              l = i + 1;
+              g = s[i];
+              if (i < n - 1)
+                for (j = l; j < n; j++)
+                  a[i * n + j] = 0.0;
+              if (g)
+              {
+                g = 1.0 / g;
+                if (i != n - 1)
+                {
+                  for (j = l; j < n; j++)
+                  {
+                    for (ss = 0.0, k = l; k < m; k++)
+                      ss += a[k * n + i] * a[k * n + j];
+                    f = (ss / a[i * n + i]) * g;
+                    for (k = i; k < m; k++)
+                      a[k * n + j] += f * a[k * n + i];
+                  }
+                }
+                for (j = i; j < m; j++)
+                  a[j * n + i] = a[j * n + i] * g;
+              }
+              else
+              {
+                for (j = i; j < m; j++)
+                  a[j * n + i] = 0.0;
+              }
+              ++a[i * n + i];
+            }
 
             /* diagonalize the bidiagonal form */
-	          for (k = n - 1; k >= 0; k--)
-	          {                             /* loop over singular values */
-	          	for (its = 0; its < 30; its++)
-	          	{                         /* loop over allowed iterations */
-	          		flag = 1;
-	          		for (l = k; l >= 0; l--)
-	          		{                     /* test for splitting */
-		          		nm = l - 1;
-		          		if (fabs(rv1[l]) + anorm == anorm)
-		          		{
-		          			flag = 0;
-		          			break;
-		          		}
-		          		if (fabs(s[nm]) + anorm == anorm)
-		          			break;
-		          	}
-		          	if (flag)
-		          	{
-		          		c = 0.0;
-		          		ss = 1.0;
-		      				for (i = l; i <= k; i++)
-		      				{
-			      				f = ss * rv1[i];
-			      				if (fabs(f) + anorm != anorm)
-		      					{
-		      						g = s[i];
-		      						h = PYTHAG(f, g);
-		      						s[i] = h;
-		      						h = 1.0 / h;
-			      					c = g * h;
-			      					ss = (-f * h);
-			      					for (j = 0; j < m; j++)
-			      					{
-			      						y = a[j * n + nm];
-			      						z = a[j * n + i];
-			      						a[j * n + nm] = y * c + z * ss;
-			      						a[j * n + i] = z * c - y * ss;
-			      					}
-		      					}
-		      				}
-		      			}
-		      			z = s[k];
-		      			if (l == k)
-		      			{                  /* convergence */
-		      				if (z < 0.0)
-		      				{              /* make singular value nonnegative */
-				      			s[k] = -z;
-			      				for (j = 0; j < n; j++)
-			      					vt[j * n + k] = (-vt[j * n + k]);
-			      			}
-			      			break;
-		      			}
-		      			if (its >= 30) {
-		      				free((void*)rv1);
-		      				fprintf(stderr, "No convergence after 30,000! iterations \n");
-	      					return(0);
-		      			}
-      		
-			      		/* shift from bottom 2 x 2 minor */
-		      			x = s[l];
-		      			nm = k - 1;
-		      			y = s[nm];
-	      				g = rv1[nm];
-	      				h = rv1[k];
-	      				f = ((y - z) * (y + z) + (g - h) * (g + h)) / (2.0 * h * y);
-	      				g = PYTHAG(f, 1.0);
-	      				f = ((x - z) * (x + z) + h * ((y / (f + SIGN(g, f))) - h)) / x;
+            for (k = n - 1; k >= 0; k--)
+            {                             /* loop over singular values */
+              for (its = 0; its < 30; its++)
+              {                         /* loop over allowed iterations */
+                flag = 1;
+                for (l = k; l >= 0; l--)
+                {                     /* test for splitting */
+                  nm = l - 1;
+                  if (fabs(rv1[l]) + anorm == anorm)
+                  {
+                    flag = 0;
+                    break;
+                  }
+                  if (fabs(s[nm]) + anorm == anorm)
+                    break;
+                }
+                if (flag)
+                {
+                  c = 0.0;
+                  ss = 1.0;
+                  for (i = l; i <= k; i++)
+                  {
+                    f = ss * rv1[i];
+                    if (fabs(f) + anorm != anorm)
+                    {
+                      g = s[i];
+                      h = PYTHAG(f, g);
+                      s[i] = h;
+                      h = 1.0 / h;
+                      c = g * h;
+                      ss = (-f * h);
+                      for (j = 0; j < m; j++)
+                      {
+                        y = a[j * n + nm];
+                        z = a[j * n + i];
+                        a[j * n + nm] = y * c + z * ss;
+                        a[j * n + i] = z * c - y * ss;
+                      }
+                    }
+                  }
+                }
+                z = s[k];
+                if (l == k)
+                {                  /* convergence */
+                  if (z < 0.0)
+                  {              /* make singular value nonnegative */
+                    s[k] = -z;
+                    for (j = 0; j < n; j++)
+                      vt[j * n + k] = (-vt[j * n + k]);
+                  }
+                  break;
+                }
+                if (its >= 30) {
+                  free((void*)rv1);
+                  fprintf(stderr, "No convergence after 30,000! iterations \n");
+                  return(0);
+                }
 
-		      			/* next QR transformation */
-		      			c = ss = 1.0;
-		      			for (j = l; j <= nm; j++)
-		      			{
-		      				i = j + 1;
-	      					g = rv1[i];
-	      					y = s[i];
-	      					h = ss * g;
-	      					g = c * g;
-		      				z = PYTHAG(f, h);
-	      					rv1[j] = z;
-		      				c = f / z;
-		      				ss = h / z;
-		      				f = x * c + g * ss;
-		      				g = g * c - x * ss;
-		      				h = y * ss;
-		      				y = y * c;
-		      				for (jj = 0; jj < n; jj++)
-			      			{
-		      					x = vt[jj * n + j];
-		      					z = vt[jj * n + i];
-		      					vt[jj * n + j] = (x * c + z * ss);
-		      					vt[jj * n + i] = (z * c - x * ss);
-		      				}
-	      					z = PYTHAG(f, h);
-		      				s[j] = z;
-	      					if (z)
-	      					{
-	      						z = 1.0 / z;
-		      					c = f * z;
-			      				ss = h * z;
-		      				}
-		      				f = (c * g) + (ss * y);
-		      				x = (c * y) - (ss * g);
-	      					for (jj = 0; jj < m; jj++)
-				      		{
-			      				y = a[jj * n + j];
-			      				z = a[jj * n + i];
-			      				a[jj * n + j] = (y * c + z * ss);
-		      					a[jj * n + i] = (z * c - y * ss);
-		      				}
-		      			}
-		      			rv1[l] = 0.0;
-	      				rv1[k] = f;
-		      			s[k] = x;
-	      			}
-	      		}
+                /* shift from bottom 2 x 2 minor */
+                x = s[l];
+                nm = k - 1;
+                y = s[nm];
+                g = rv1[nm];
+                h = rv1[k];
+                f = ((y - z) * (y + z) + (g - h) * (g + h)) / (2.0 * h * y);
+                g = PYTHAG(f, 1.0);
+                f = ((x - z) * (x + z) + h * ((y / (f + SIGN(g, f))) - h)) / x;
 
+                /* next QR transformation */
+                c = ss = 1.0;
+                for (j = l; j <= nm; j++)
+                {
+                  i = j + 1;
+                  g = rv1[i];
+                  y = s[i];
+                  h = ss * g;
+                  g = c * g;
+                  z = PYTHAG(f, h);
+                  rv1[j] = z;
+                  c = f / z;
+                  ss = h / z;
+                  f = x * c + g * ss;
+                  g = g * c - x * ss;
+                  h = y * ss;
+                  y = y * c;
+                  for (jj = 0; jj < n; jj++)
+                  {
+                    x = vt[jj * n + j];
+                    z = vt[jj * n + i];
+                    vt[jj * n + j] = (x * c + z * ss);
+                    vt[jj * n + i] = (z * c - x * ss);
+                  }
+                  z = PYTHAG(f, h);
+                  s[j] = z;
+                  if (z)
+                  {
+                    z = 1.0 / z;
+                    c = f * z;
+                    ss = h * z;
+                  }
+                  f = (c * g) + (ss * y);
+                  x = (c * y) - (ss * g);
+                  for (jj = 0; jj < m; jj++)
+                  {
+                    y = a[jj * n + j];
+                    z = a[jj * n + i];
+                    a[jj * n + j] = (y * c + z * ss);
+                    a[jj * n + i] = (z * c - y * ss);
+                  }
+                }
+                rv1[l] = 0.0;
+                rv1[k] = f;
+                s[k] = x;
+              }
+            }
 
-fprintf(stderr, "------------------------\n");
-for (int i = 0; i < len_A; i++)
-  fprintf(stderr, "%lf ", a[i]);
-fprintf(stderr, "\n------------------------\n");
+#ifdef DEBUGGING
+            fprintf(stderr, "------------------------\n");
+            for (int i = 0; i < len_A; i++)
+              fprintf(stderr, "%lf ", a[i]);
+            fprintf(stderr, "\n------------------------\n");
 
-fprintf(stderr, "s:\n");
-for (int i = 0; i < len_S; i++)
-  fprintf(stderr, "%lf ", s[i]);
-fprintf(stderr, "\nu:\n");
-for (int i = 0; i < m; i++)
-  for (int j = 0; j < n; j++)
-    u[i * ldu + j] = a[i * n + j];
-for (int i = 0; i < len_U; i++)
-  fprintf(stderr, "%lf ", u[i]);
-fprintf(stderr, "\nvt:\n");
-for (int i = 0; i < len_VT; i++)
-  fprintf(stderr, "%lf ", vt[i]);
-fprintf(stderr, "\n");
-double tmp;
-for (int i = 0; i < n; i++)
-  for (int j = i + 1; j < ldvt; j++) {
-    tmp = vt[i * ldvt + j];
-    vt[i * ldvt + j] = vt[j * ldvt + i];
-    vt[j * ldvt + i] = tmp;
-  }
+            fprintf(stderr, "s:\n");
+            for (int i = 0; i < len_S; i++)
+              fprintf(stderr, "%lf ", s[i]);
+            fprintf(stderr, "\nu:\n");
+            for (int i = 0; i < m; i++)
+              for (int j = 0; j < n; j++)
+                u[i * ldu + j] = a[i * n + j];
+            for (int i = 0; i < len_U; i++)
+              fprintf(stderr, "%lf ", u[i]);
+            fprintf(stderr, "\nvt:\n");
+            for (int i = 0; i < len_VT; i++)
+              fprintf(stderr, "%lf ", vt[i]);
+            fprintf(stderr, "\n");
+            double tmp;
+            for (int i = 0; i < n; i++) {
+              for (int j = i + 1; j < ldvt; j++) {
+                tmp = vt[i * ldvt + j];
+                vt[i * ldvt + j] = vt[j * ldvt + i];
+                vt[j * ldvt + i] = tmp;
+              }
+            }
+#endif
 
             /* calculation ends here */
             end = system_clock::now();
