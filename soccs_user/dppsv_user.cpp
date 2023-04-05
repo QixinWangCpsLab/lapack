@@ -4,6 +4,7 @@
 #include <chrono>
 #include <unistd.h>
 #include <sched.h>
+#include <random>
 
 #include "lapacke.h"
 
@@ -14,6 +15,7 @@ using namespace std::chrono;
 
 static FILE *ap_data, *bx_data, *timer_log;
 double *ap, *bx, *ap_, *bx_;
+double *M, *MT, *A, *X;
 int layout;
 lapack_int n, nrhs, ldb;
 char uplo;
@@ -23,8 +25,42 @@ char t_file[32];
 
 void user_call_dppsv() {
   /* generate data, call dppsv */ 
-  memcpy(ap_, ap, n * (n + 1) / 2 * sizeof(double));
-  memcpy(bx_, bx, nrhs * ldb * sizeof(double));
+  // memcpy(ap_, ap, n * (n + 1) / 2 * sizeof(double));
+  // memcpy(bx_, bx, nrhs * ldb * sizeof(double));
+  const int float_min = -10, float_max = 10;
+  std::random_device rd; 
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<float> uniform_float(float_min, float_max);
+  M = (double *) malloc (n * n * sizeof(double));
+  MT = (double *) malloc (n * n * sizeof(double));
+  A = (double *) malloc (n * n * sizeof(double));
+  X = (double *) malloc (nrhs * n * sizeof(double));
+
+  for (int i = 0; i < n; i++)		// generate M and MT
+    for (int j = 0; j < n; j++) {
+	    M[i * n + j] = uniform_float(gen);
+		  MT[j * n + i] = M[i * n + j];
+    }
+  for (int i = 0; i < n; i++)    // generate A = M * MT
+		for (int j = 0; j < n; j++) {
+		  double sum = 0;
+		  for (int k = 0; k < n; k++)
+			  sum += MT[i * n + k] * M[k * n + j];
+		  A[i * n + j] = sum;
+    }
+  for (int i = 0; i < n; i++)    // copy A to ap_
+		for (int j = 0; j < n; j++)
+		  ap_[i * n + j] = A[i * n + j];
+  for (int i = 0; i < n; i++)  	// generate X
+	  for (int j = 0; j < nrhs; j++)
+		  X[i + j * n] = uniform_float(gen);
+	for (int i = 0; i < n; i++)		// each row of A
+	  for (int j = 0; j < nrhs; j++) {	// each column of X
+	    int sum = 0;
+      for (int k = 0; k < n; k++)	// generate B (B = A * X)
+		    sum += A[i * n + k]*X[k + j * n];
+	    bx_[j * n + i] = sum;
+	  }
 
   try {
     lapack_int info;
