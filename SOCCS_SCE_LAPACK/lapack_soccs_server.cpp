@@ -1,7 +1,7 @@
 #include "soccs_sce_client_server_circular_queue.h"
 #include "soccs_sce_client_server_protocol.h"
 #include "soccs_sce_tools.h"
-#include "soccs_sce_server_lapack_dppsv.h"
+#include "soccs_sce_server_lapack.h"
 
 using namespace std;
 using namespace std::chrono;

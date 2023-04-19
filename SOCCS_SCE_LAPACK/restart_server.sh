@@ -4,9 +4,10 @@ if [ -z "$1" ];then
 fi
 
 killall server_soc
+make -s
 for index in "$@"
 do
    echo "Start server at core $index -"
-   sudo chrt --rr 1 ./server_soc $index &
+   sudo chrt -f 99 ./server_soc $index &
 done
 

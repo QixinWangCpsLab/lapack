@@ -13,28 +13,38 @@
 using namespace std;
 using namespace std::chrono;
 
-static FILE *ap_data, *bx_data, *timer_log;
-double *ap, *bx, *ap_, *bx_;
+static FILE *timer_log;
+double *ap_, *bx_;
 double *M, *MT, *A, *X;
 int layout;
 lapack_int n, nrhs, ldb;
 char uplo;
 
-int cl_index, ms_index = -1;
+int cl_index, ms_index = -1, cl_prior = -1;
 char t_file[32];
 
 void user_call_dppsv() {
   /* generate data, call dppsv */ 
-  // memcpy(ap_, ap, n * (n + 1) / 2 * sizeof(double));
-  // memcpy(bx_, bx, nrhs * ldb * sizeof(double));
-  const int float_min = -10, float_max = 10;
+
+  layout  =   LAPACK_COL_MAJOR;
+  uplo    =   'L'; // 'U'
+  n       =   200;
+  nrhs    =   1;
+  ldb     =   n;
+  
+  const double float_min = -10;
+  const double float_max =  10;
+  
   std::random_device rd; 
   std::mt19937 gen(rd());
-  std::uniform_real_distribution<float> uniform_float(float_min, float_max);
-  M = (double *) malloc (n * n * sizeof(double));
+  std::uniform_real_distribution<double> uniform_float(float_min, float_max);
+  
+  M  = (double *) malloc (n * n * sizeof(double));
   MT = (double *) malloc (n * n * sizeof(double));
-  A = (double *) malloc (n * n * sizeof(double));
-  X = (double *) malloc (nrhs * n * sizeof(double));
+  A  = (double *) malloc (n * n * sizeof(double));
+  X  = (double *) malloc (nrhs * n * sizeof(double));
+  ap = (double *) malloc (n * (n + 1) / 2 * sizeof(double));
+  bx = (double *) malloc (nrhs * ldb * sizeof(double));
 
   for (int i = 0; i < n; i++)		// generate M and MT
     for (int j = 0; j < n; j++) {
@@ -49,7 +59,7 @@ void user_call_dppsv() {
 		  A[i * n + j] = sum;
     }
   for (int i = 0; i < n; i++)    // copy A to ap_
-		for (int j = 0; j < n; j++)
+		for (int j = 0; j < n - i; j++)
 		  ap_[i * n + j] = A[i * n + j];
   for (int i = 0; i < n; i++)  	// generate X
 	  for (int j = 0; j < nrhs; j++)
@@ -58,15 +68,16 @@ void user_call_dppsv() {
 	  for (int j = 0; j < nrhs; j++) {	// each column of X
 	    int sum = 0;
       for (int k = 0; k < n; k++)	// generate B (B = A * X)
-		    sum += A[i * n + k]*X[k + j * n];
+		    sum += A[i * n + k] * X[k + j * n];
 	    bx_[j * n + i] = sum;
 	  }
 
   try {
     lapack_int info;
-
     auto start = system_clock::now();
+    /* call dppsv */
     info = LAPACKE_dppsv(layout, uplo, n, nrhs, ap_, bx_, ldb);
+    
     auto end = system_clock::now();
     auto duration = duration_cast<nanoseconds>(end - start);
     fprintf(stderr, "\033[032mTotal Cost\n%ld (s) : %-9ld (ns)\033[0m\n",
@@ -99,12 +110,14 @@ void user_call_dppsv() {
 int main(int argc, char *argv[]) {
 
   if(argc != 4) {
-    fprintf(stderr, "Args: [cl_index] [ms_index] [ap_data] [bx_data]\n");
+    fprintf(stderr, "Args: [cl_index] [ms_index] [priority]\n");
     exit(EXIT_FAILURE);
   }
 
   cl_index = atoi(argv[1]);
   ms_index = atoi(argv[2]);
+  cl_prior = atoi(argv[3]);
+
   fprintf(stderr, "Using core %d.\n", ms_index);
 
   cpu_set_t *cpuset = CPU_ALLOC(NUM_CPUS);
@@ -113,38 +126,11 @@ int main(int argc, char *argv[]) {
   CPU_SET_S(cl_index, cpuset_size, cpuset);
   sched_setaffinity(getpid(), cpuset_size, cpuset);
 
-  layout  =   LAPACK_COL_MAJOR;
-  uplo    =   'L'; // 'U'
-  n       =   200;
-  nrhs    =   1;
-  ldb     =   n;
 
-  ap  = (double *) malloc (n * (n + 1) / 2 * sizeof(double));
-  bx  = (double *) malloc (nrhs * ldb * sizeof(double));
-  ap_ = (double *) malloc (n * (n + 1) / 2 * sizeof(double));
-  bx_ = (double *) malloc (nrhs * ldb * sizeof(double));
 
-  ap_data = fopen(argv[3], "r");
-  bx_data = fopen(argv[4], "r");
   sprintf(t_file, "stat/log_dppsv_%d.txt", ms_index);
   timer_log = fopen(t_file, "w");
   fclose(timer_log);
-
-  char sd[32];
-  int k = 0;
-  for(int i = 0; i < n; i++) 
-  {
-    for(int j = 0; j < n; j++) 
-    {
-      fscanf(ap_data, "%s", sd);
-      if(j >= i) ap[k++] = strtod(sd, nullptr);
-    }
-  }
-
-  for(int i = 0; i < nrhs * ldb; i++) {
-    fscanf(bx_data, "%s", sd);
-    bx[i] = strtod(sd, nullptr);
-  }
 
 #ifdef LOOP
   while(true)

@@ -68,6 +68,7 @@ for index in data:
     plt.plot(indices, data[index][pid], label=f'Core {index} - {pid}', \
       color=colors[ci], marker=mk, markersize=ms, linestyle=ls, linewidth=lw)
     ci += 1
+
 plt.semilogy()
 plt.legend()
 plt.show()

@@ -21,6 +21,15 @@ static circular_queue *reply_queue    = nullptr;
 
 extern int ms_index;
 
+static bool terminated = false;
+static void sigint_handler(int sig)
+{
+  if (sig != SIGINT)
+    return;
+  terminated = true;
+  fprintf(stderr, "SIGINT received!\n");
+}
+
 void soccs_sce_lapack_dgesvd (
     char *jobu, char *jobvt,
     lapack_int *m, lapack_int *n,
@@ -29,6 +38,7 @@ void soccs_sce_lapack_dgesvd (
     double *work, double *lwork,
     lapack_int *info) {
 
+  signal(SIGINT, sigint_handler);
   /* client soccs_sce_dgesvd */
 #ifdef DEBUGGING
   fprintf(stderr, "\033[31mcalling soccs_sce_lapack_dgesvd\033[0m\n");
@@ -206,10 +216,12 @@ blocking_waiting_for_reply:
   auto duration0 = duration_cast<nanoseconds> (end0 - start0);
   auto duration1 = duration_cast<nanoseconds> (end1 - start1);
 
+#ifdef TIMER
   fprintf(stderr, "\033[032mC-S-C Cost\n%ld (s) : %-9ld (ns)\033[0m\n",
       duration0.count() / (long) 1e9, duration0.count() % (long) 1e9);
   fprintf(stderr, "\033[032mServer Cost\n%ld (s) : %-9ld (ns)\033[0m\n",
       duration1.count() / (long) 1e9, duration1.count() % (long) 1e9);
+#endif
 
   /* free memory space in reply queue */
   reply_header = (struct reply_packet_header *)
@@ -221,6 +233,11 @@ blocking_waiting_for_reply:
 #ifdef DEBUGGING
   fprintf(stderr, "client reached end.\n");
 #endif
+
+  if(terminated == true) {
+    fprintf(stderr, "EXIT\n");
+    exit(EXIT_SUCCESS);
+  }
 
 }
 
